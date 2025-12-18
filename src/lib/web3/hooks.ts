@@ -1,5 +1,5 @@
-// lib/web3/hooks.ts
-// Custom hooks for interacting with MAXION smart contracts
+// src/lib/web3/hooks.ts - FIXED mockUSDC property access
+
 
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
@@ -7,13 +7,20 @@ import { getContracts } from './config';
 import YieldVaultABI from './abis/YieldVault.json';
 import ERC20ABI from './abis/ERC20.json';
 
+// Helper function to get USDC address
+function getUSDCAddressForChain(chainId: number) {
+  const contracts = getContracts(chainId);
+  // Handle both testnet (mockUSDC) and mainnet (usdc)
+  if ('mockUSDC' in contracts) {
+    return contracts.mockUSDC as `0x${string}`;
+  }
+  return (contracts as any).usdc as `0x${string}`;
+}
+
 // ============================================================================
 // VAULT HOOKS
 // ============================================================================
 
-/**
- * Hook to read user's vault share balance
- */
 export function useVaultBalance() {
   const { address, chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
@@ -29,9 +36,6 @@ export function useVaultBalance() {
   });
 }
 
-/**
- * Hook to read user's position details
- */
 export function useUserPosition() {
   const { address, chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
@@ -47,9 +51,6 @@ export function useUserPosition() {
   });
 }
 
-/**
- * Hook to read current share price
- */
 export function useSharePrice() {
   const { chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
@@ -61,14 +62,11 @@ export function useSharePrice() {
   });
 }
 
-/**
- * Hook to preview deposit (calculate shares for given amount)
- */
 export function usePreviewDeposit(amount: string) {
   const { chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
 
-  const amountWei = amount ? parseUnits(amount, 6) : BigInt(0); // USDC has 6 decimals
+  const amountWei = amount ? parseUnits(amount, 6) : BigInt(0);
 
   return useReadContract({
     address: contracts.yieldVault as `0x${string}`,
@@ -81,9 +79,6 @@ export function usePreviewDeposit(amount: string) {
   });
 }
 
-/**
- * Hook to read vault total assets
- */
 export function useTotalAssets() {
   const { chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
@@ -96,18 +91,14 @@ export function useTotalAssets() {
 }
 
 // ============================================================================
-// TOKEN HOOKS
+// TOKEN HOOKS - FIXED
 // ============================================================================
 
-/**
- * Hook to read USDC balance
- */
 export function useUSDCBalance() {
   const { address, chainId } = useAccount();
-  const contracts = getContracts(chainId || 5003);
 
   return useReadContract({
-    address: contracts.mockUSDC as `0x${string}`,
+    address: getUSDCAddressForChain(chainId || 5003),
     abi: ERC20ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -117,15 +108,12 @@ export function useUSDCBalance() {
   });
 }
 
-/**
- * Hook to read USDC allowance for vault
- */
 export function useUSDCAllowance() {
   const { address, chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
 
   return useReadContract({
-    address: contracts.mockUSDC as `0x${string}`,
+    address: getUSDCAddressForChain(chainId || 5003),
     abi: ERC20ABI,
     functionName: 'allowance',
     args: address ? [address, contracts.yieldVault] : undefined,
@@ -136,12 +124,9 @@ export function useUSDCAllowance() {
 }
 
 // ============================================================================
-// WRITE HOOKS
+// WRITE HOOKS - FIXED
 // ============================================================================
 
-/**
- * Hook to approve USDC spending
- */
 export function useApproveUSDC() {
   const { chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
@@ -152,7 +137,7 @@ export function useApproveUSDC() {
     const amountWei = parseUnits(amount, 6);
     
     return writeContract({
-      address: contracts.mockUSDC as `0x${string}`,
+      address: getUSDCAddressForChain(chainId || 5003),
       abi: ERC20ABI,
       functionName: 'approve',
       args: [contracts.yieldVault, amountWei],
@@ -172,9 +157,6 @@ export function useApproveUSDC() {
   };
 }
 
-/**
- * Hook to deposit into vault
- */
 export function useDeposit() {
   const { chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
@@ -205,9 +187,6 @@ export function useDeposit() {
   };
 }
 
-/**
- * Hook to withdraw from vault
- */
 export function useWithdraw() {
   const { chainId } = useAccount();
   const contracts = getContracts(chainId || 5003);
@@ -242,17 +221,11 @@ export function useWithdraw() {
 // UTILITY FUNCTIONS
 // ============================================================================
 
-/**
- * Format token amount for display
- */
 export function formatTokenAmount(value: bigint | undefined, decimals: number = 6): string {
   if (!value) return '0';
   return formatUnits(value, decimals);
 }
 
-/**
- * Parse token amount from string
- */
 export function parseTokenAmount(value: string, decimals: number = 6): bigint {
   if (!value || value === '') return BigInt(0);
   return parseUnits(value, decimals);

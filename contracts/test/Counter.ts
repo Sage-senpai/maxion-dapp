@@ -1,13 +1,12 @@
+// contracts/test/Counter.ts
 import { expect } from "chai";
-import { network } from "hardhat";
-
-const { ethers } = await network.connect();
+import { ethers } from "hardhat";
 
 describe("Counter", function () {
   it("Should emit the Increment event when calling the inc() function", async function () {
     const counter = await ethers.deployContract("Counter");
 
-    await expect(counter.inc()).to.emit(counter, "Increment").withArgs(1n);
+    await expect(counter.inc()).to.emit(counter, "Increment").withArgs(BigInt(1));
   });
 
   it("The sum of the Increment events should match the current value", async function () {
@@ -26,7 +25,7 @@ describe("Counter", function () {
     );
 
     // check that the aggregated events match the current value
-    let total = 0n;
+    let total = BigInt(0);
     for (const event of events) {
       total += event.args.by;
     }

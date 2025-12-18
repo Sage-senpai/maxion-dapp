@@ -276,7 +276,7 @@ function getRiskExplanation(riskLevel: string): string {
 }
 
 function getRiskDetails(riskLevel: string): string {
-  const details = {
+  const details: Record<string, string> = {
     'Low': '• Minimal capital loss risk\n• Stable, predictable returns\n• High credit quality\n• Government backing or senior security',
     'Low-Medium': '• Limited downside risk\n• Moderate return stability\n• Established asset classes\n• Good collateralization',
     'Medium': '• Balanced risk-return profile\n• Some volatility expected\n• Diversified exposure\n• Professional management',
@@ -310,14 +310,13 @@ function getProfileMatch(profile: string, riskLevel: string): string {
 }
 
 function getAllocationStrategy(profile: string): string {
-  const strategies = {
+  const strategies: Record<string, string> = {
     conservative: '• 70% Low-risk (Treasury, Infrastructure)\n• 25% Low-Medium risk (Real Estate)\n• 5% Medium risk for diversification',
     balanced: '• 40% Low-risk for stability\n• 40% Medium-risk for growth\n• 20% Medium-High for enhanced returns',
     aggressive: '• 20% Low-risk as foundation\n• 40% Medium-risk\n• 40% Medium-High and High for maximum yield',
   };
   return strategies[profile] || strategies.balanced;
 }
-
 function getYieldComparison(apy: number): string {
   if (apy < 5) return 'conservative but stable';
   if (apy < 8) return 'competitive for moderate risk';

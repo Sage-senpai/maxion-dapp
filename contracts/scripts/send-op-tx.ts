@@ -1,22 +1,28 @@
-import { network } from "hardhat";
+// contracts/scripts/send-op-tx.ts
+// This file is for Hardhat 3 beta - if not using, can be deleted
+// OR fix like this:
 
-const { ethers } = await network.connect({
-  network: "hardhatOp",
-  chainType: "op",
+import { ethers } from "hardhat";
+
+async function main() {
+  console.log("Sending transaction");
+
+  const [sender] = await ethers.getSigners();
+
+  console.log("Sending 1 wei from", sender.address, "to itself");
+
+  console.log("Sending transaction");
+  const tx = await sender.sendTransaction({
+    to: sender.address,
+    value: BigInt(1),
+  });
+
+  await tx.wait();
+
+  console.log("Transaction sent successfully");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
 });
-
-console.log("Sending transaction using the OP chain type");
-
-const [sender] = await ethers.getSigners();
-
-console.log("Sending 1 wei from", sender.address, "to itself");
-
-console.log("Sending L2 transaction");
-const tx = await sender.sendTransaction({
-  to: sender.address,
-  value: 1n,
-});
-
-await tx.wait();
-
-console.log("Transaction sent successfully");
