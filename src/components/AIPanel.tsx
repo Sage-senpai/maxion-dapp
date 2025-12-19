@@ -1,63 +1,101 @@
 // src/components/AIPanel.tsx
 // Location: src/components/AIPanel.tsx
-// AI Analyst slide-in panel from right
-// Responsive: Full screen on mobile, 384px width on desktop
+// UPDATED: Add mode prop and API integration
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Brain } from 'lucide-react';
+import { X, Brain, Send } from 'lucide-react';
 import { COLORS } from '@/lib/constants';
+import { aiAPI } from '@/lib/api';
 import type { RWAAsset } from '@/lib/constants';
 
 interface AIPanelProps {
   isOpen: boolean;
   onClose: () => void;
   selectedAsset?: RWAAsset | null;
+  mode: 'live' | 'demo';
+  walletAddress?: string;
 }
 
-export function AIPanel({ isOpen, onClose, selectedAsset }: AIPanelProps) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: selectedAsset
-        ? `I'm analyzing ${selectedAsset.name}. This asset offers ${selectedAsset.apy}% APY with ${selectedAsset.risk} risk profile. What would you like to know?`
-        : "Hello! I'm your AI analyst. Ask me about yield quality, risk assessment, or allocation strategies.",
-    },
-  ]);
+export function AIPanel({ isOpen, onClose, selectedAsset, mode, walletAddress }: AIPanelProps) {
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Initialize with greeting
+  useEffect(() => {
+    if (isOpen) {
+      const greeting = selectedAsset
+        ? `I'm analyzing ${selectedAsset.name}. This asset offers ${selectedAsset.apy}% APY with ${selectedAsset.risk} risk profile. What would you like to know?`
+        : mode === 'demo'
+        ? "Hello! I'm your AI analyst in demo mode. Ask me about yield quality, risk assessment, or allocation strategies."
+        : "Hello! I'm your AI analyst. Ask me about your portfolio, yield quality, or allocation strategies.";
+      
+      setMessages([{ role: 'assistant', content: greeting }]);
+    }
+  }, [isOpen, selectedAsset, mode]);
 
   const quickQuestions = [
     "Why this yield?",
     "What are the risks?",
     "Conservative allocation?",
-    "Compare with alternatives"
+    "Compare alternatives"
   ];
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    if (!input.trim() || loading) return;
     
-    setMessages([...messages, { role: 'user', content: input }]);
+    const userMessage = input;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     
-    // Simulate AI response
-    setTimeout(() => {
+    setLoading(true);
+    
+    try {
+      if (mode === 'live' && walletAddress) {
+        // Call real API
+        const response = await aiAPI.createAnalysis({
+          walletAddress,
+          query: userMessage,
+          context: selectedAsset ? {
+            assetId: selectedAsset.id,
+            assetName: selectedAsset.name,
+            apy: selectedAsset.apy,
+            riskLevel: selectedAsset.risk,
+          } : undefined,
+        });
+        
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: response.analysis.response,
+        }]);
+      } else {
+        // Demo mode - simulate response
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const demoResponse = generateDemoResponse(userMessage, selectedAsset);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: demoResponse,
+        }]);
+      }
+    } catch (error) {
+      console.error('AI query failed:', error);
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `Based on my analysis, ${input.toLowerCase().includes('risk') 
-          ? 'the primary risks include market volatility, liquidity constraints, and underlying asset performance. However, this asset has strong collateralization and regulatory oversight.' 
-          : 'this yield is generated through a combination of interest payments and strategic asset appreciation. The 7-12% range reflects current market conditions and the quality of underlying collateral.'}`
+        content: 'Sorry, I encountered an error. Please try again.',
       }]);
-    }, 1000);
-    
-    setInput('');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop - Mobile only */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -66,7 +104,6 @@ export function AIPanel({ isOpen, onClose, selectedAsset }: AIPanelProps) {
             onClick={onClose}
           />
 
-          {/* Panel - Full screen mobile, sidebar desktop */}
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -88,6 +125,13 @@ export function AIPanel({ isOpen, onClose, selectedAsset }: AIPanelProps) {
                 <span className="font-semibold" style={{ color: COLORS.signalCyan }}>
                   AI Analyst
                 </span>
+                <span className="text-xs px-2 py-0.5 rounded-full" 
+                  style={{ 
+                    backgroundColor: mode === 'live' ? `${COLORS.maxionGreen}20` : `${COLORS.signalCyan}20`,
+                    color: mode === 'live' ? COLORS.maxionGreen : COLORS.signalCyan,
+                  }}>
+                  {mode === 'live' ? 'LIVE' : 'DEMO'}
+                </span>
               </div>
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -99,7 +143,7 @@ export function AIPanel({ isOpen, onClose, selectedAsset }: AIPanelProps) {
               </motion.button>
             </div>
 
-            {/* Messages - Scrollable */}
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((msg, idx) => (
                 <motion.div
@@ -119,6 +163,17 @@ export function AIPanel({ isOpen, onClose, selectedAsset }: AIPanelProps) {
                   </div>
                 </motion.div>
               ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: COLORS.obsidianBlack }}>
+                    <div className="flex gap-2">
+                      <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: COLORS.signalCyan }} />
+                      <div className="w-2 h-2 rounded-full animate-pulse delay-100" style={{ backgroundColor: COLORS.signalCyan }} />
+                      <div className="w-2 h-2 rounded-full animate-pulse delay-200" style={{ backgroundColor: COLORS.signalCyan }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quick Questions */}
@@ -132,49 +187,3 @@ export function AIPanel({ isOpen, onClose, selectedAsset }: AIPanelProps) {
                     key={q}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setInput(q)}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium border"
-                    style={{
-                      borderColor: COLORS.signalCyan,
-                      color: COLORS.signalCyan,
-                    }}
-                  >
-                    {q}
-                  </motion.button>
-                ))}
-              </div>
-
-              {/* Input */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Ask about yield, risk, allocation..."
-                  className="flex-1 px-4 py-2 rounded-lg text-sm outline-none"
-                  style={{
-                    backgroundColor: COLORS.slateGrey,
-                    color: '#E5E7EB',
-                  }}
-                />
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleSend}
-                  className="px-4 py-2 rounded-lg font-medium text-sm"
-                  style={{
-                    backgroundColor: COLORS.signalCyan,
-                    color: COLORS.obsidianBlack,
-                  }}
-                >
-                  Send
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}

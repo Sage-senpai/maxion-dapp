@@ -5,6 +5,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ToastProvider } from '@/components/shared/Toast';
 import { Providers } from "./providers";
 
 // Fonts for MAXION design system
@@ -46,10 +47,12 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
         style={{ backgroundColor: '#0B0E11' }} // MAXION Black
-      >
+      > 
+      <ToastProvider>
         <Providers>
           {children}
         </Providers>
+         </ToastProvider>
       </body>
     </html>
   );

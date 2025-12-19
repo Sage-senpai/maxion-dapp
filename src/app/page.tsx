@@ -1,199 +1,501 @@
-// src/app/page.tsx
-// Location: src/app/page.tsx
-// Main MAXION application - orchestrates all views
-// Responsive: Desktop sidebar + mobile bottom nav
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Brain, TrendingUp, Shield, Menu, X, Check, ChevronRight } from 'lucide-react';
 
-'use client';
+const COLORS = {
+  maxionGreen: '#3EF3A3',
+  obsidianBlack: '#0B0E11',
+  graphitePanel: '#161B22',
+  slateGrey: '#1F2937',
+  signalCyan: '#2BD9FE',
+};
 
-import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Wallet, Brain } from 'lucide-react';
-import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { LoadingSequence } from '@/components/LoadingSequence';
-import { Sidebar } from '@/components/Sidebar';
-import { MobileNav } from '@/components/MobileNav';
-import { AIPanel } from '@/components/AIPanel';
-import { Overview } from '@/components/Dashboard/Overview';
-import { AssetTable } from '@/components/Assets/AssetTable';
-import { AllocateFlow } from '@/components/Allocate/AllocateFlow';
-import { PortfolioView } from '@/components/Portfolio/PortfolioView';
-import { COLORS } from '@/lib/constants';
-import type { RWAAsset } from '@/lib/constants';
-
-export default function MaxionApp() {
-  const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState('overview');
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<RWAAsset | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  
-  const { isConnected } = useAccount();
-
-  // Detect mobile on mount and resize
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | null>(null);
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{ backgroundColor: COLORS.obsidianBlack, fontFamily: 'Inter, sans-serif' }}
-    >
-      {/* Loading Sequence */}
-      <AnimatePresence>
-        {loading && (
-          <LoadingSequence onComplete={() => setLoading(false)} />
-        )}
-      </AnimatePresence>
+    <div style={{ backgroundColor: COLORS.obsidianBlack, minHeight: '100vh' }}>
+      {/* Navigation */}
+      <nav className="fixed top-0 w-full z-50 border-b" style={{ 
+        backgroundColor: `${COLORS.graphitePanel}dd`,
+        backdropFilter: 'blur(10px)',
+        borderColor: COLORS.slateGrey 
+      }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: COLORS.maxionGreen }}>
+                <Brain size={20} style={{ color: COLORS.obsidianBlack }} />
+              </div>
+              <span className="text-xl font-bold" style={{ color: COLORS.maxionGreen }}>MAXION</span>
+            </div>
 
-      {!loading && (
-        <>
-          {/* Desktop Sidebar */}
-          {!isMobile && (
-            <Sidebar
-              activeView={activeView}
-              setActiveView={setActiveView}
-              walletConnected={isConnected}
-            />
-          )}
-
-          {/* Main Content Area */}
-          <div className={`${!isMobile ? 'md:ml-64' : ''} min-h-screen`}>
-            {/* Top Bar - Mobile Header */}
-            {isMobile && (
-              <div 
-                className="sticky top-0 z-30 border-b"
-                style={{
-                  backgroundColor: COLORS.graphitePanel,
-                  borderColor: COLORS.slateGrey,
-                }}
+            {/* Desktop Nav */}
+            <div className="hidden md:flex items-center gap-8">
+              <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
+              <a href="#how-it-works" className="text-gray-300 hover:text-white transition-colors">How It Works</a>
+              <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a>
+              <button 
+                onClick={() => setAuthMode('signin')}
+                className="text-gray-300 hover:text-white transition-colors"
               >
-                <div className="flex items-center justify-between p-4">
-                  <div>
-                    <h1 
-                      className="text-xl font-bold"
-                      style={{ color: COLORS.maxionGreen }}
-                    >
-                      MAXION
-                    </h1>
-                    <p 
-                      className="text-xs font-mono"
-                      style={{ color: COLORS.signalCyan }}
-                    >
-                      Intelligence Layer
-                    </p>
-                  </div>
-                  <div className="scale-90 origin-right">
-                    <ConnectButton 
-                      showBalance={false}
-                      chainStatus="icon"
-                    />
-                  </div>
+                Sign In
+              </button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setAuthMode('signup')}
+                className="px-6 py-2 rounded-lg font-medium"
+                style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+              >
+                Get Started
+              </motion.button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button 
+              className="md:hidden text-gray-300"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="md:hidden border-t overflow-hidden"
+              style={{ borderColor: COLORS.slateGrey }}
+            >
+              <div className="px-4 py-4 space-y-3">
+                <a href="#features" className="block text-gray-300 hover:text-white">Features</a>
+                <a href="#how-it-works" className="block text-gray-300 hover:text-white">How It Works</a>
+                <a href="#pricing" className="block text-gray-300 hover:text-white">Pricing</a>
+                <button onClick={() => setAuthMode('signin')} className="block text-gray-300 hover:text-white">Sign In</button>
+                <button 
+                  onClick={() => setAuthMode('signup')}
+                  className="w-full px-6 py-2 rounded-lg font-medium"
+                  style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+                >
+                  Get Started
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="pt-32 pb-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center max-w-4xl mx-auto"
+          >
+            <h1 className="text-5xl md:text-7xl font-bold mb-6" style={{ color: COLORS.maxionGreen }}>
+              Intelligence for
+              <br />Real Yield
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-300 mb-8">
+              Don't just chase yield — understand it. MAXION brings AI-powered analysis to real-world asset investments on Mantle.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setAuthMode('signup')}
+                className="px-8 py-4 rounded-lg font-semibold text-lg"
+                style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+              >
+                Start Free Trial
+                <ChevronRight className="inline ml-2" size={20} />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-8 py-4 rounded-lg font-semibold text-lg border"
+                style={{ borderColor: COLORS.signalCyan, color: COLORS.signalCyan }}
+              >
+                Watch Demo
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20">
+            {[
+              { label: 'Total Value Locked', value: '$45M+' },
+              { label: 'Active Users', value: '12,400+' },
+              { label: 'RWA Assets', value: '150+' },
+              { label: 'Avg APY', value: '7.8%' },
+            ].map((stat, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="text-center"
+              >
+                <div className="text-3xl md:text-4xl font-bold font-mono mb-2" style={{ color: COLORS.maxionGreen }}>
+                  {stat.value}
                 </div>
-              </div>
-            )}
+                <div className="text-sm text-gray-400">{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-            {/* Desktop Connect Button */}
-            {!isMobile && !isConnected && (
-              <div className="flex justify-end p-6">
-                <ConnectButton />
-              </div>
-            )}
-
-            {/* Main Content */}
-            <main className="p-4 md:p-8 pb-24 md:pb-8">
-              <AnimatePresence mode="wait">
-                {activeView === 'overview' && (
-                  <motion.div
-                    key="overview"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <Overview setAiPanelOpen={setAiPanelOpen} />
-                  </motion.div>
-                )}
-                
-                {activeView === 'assets' && (
-                  <motion.div
-                    key="assets"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <AssetTable
-                      setAiPanelOpen={setAiPanelOpen}
-                      setSelectedAsset={setSelectedAsset}
-                    />
-                  </motion.div>
-                )}
-                
-                {activeView === 'allocate' && (
-                  <motion.div
-                    key="allocate"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <AllocateFlow setAiPanelOpen={setAiPanelOpen} />
-                  </motion.div>
-                )}
-                
-                {activeView === 'portfolio' && (
-                  <motion.div
-                    key="portfolio"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <PortfolioView />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </main>
+      {/* Features Section */}
+      <section id="features" className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: COLORS.maxionGreen }}>
+              Why MAXION?
+            </h2>
+            <p className="text-xl text-gray-400">Intelligence meets real-world yield</p>
           </div>
 
-          {/* Mobile Bottom Navigation */}
-          {isMobile && (
-            <MobileNav 
-              activeView={activeView} 
-              setActiveView={setActiveView} 
-            />
-          )}
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Brain,
+                title: 'AI-Powered Analysis',
+                description: 'Get instant explanations of yield sources, risk factors, and optimal allocation strategies.',
+                color: COLORS.signalCyan,
+              },
+              {
+                icon: TrendingUp,
+                title: 'Real-World Assets',
+                description: 'Access tokenized treasury bonds, real estate, infrastructure, and private credit on-chain.',
+                color: COLORS.maxionGreen,
+              },
+              {
+                icon: Shield,
+                title: 'Risk Intelligence',
+                description: 'Transparent risk assessment with personalized recommendations for your profile.',
+                color: COLORS.maxionGreen,
+              },
+            ].map((feature, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.2 }}
+                className="p-8 rounded-xl border"
+                style={{ backgroundColor: COLORS.graphitePanel, borderColor: COLORS.slateGrey }}
+              >
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ backgroundColor: `${feature.color}20` }}>
+                  <feature.icon size={24} style={{ color: feature.color }} />
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-white">{feature.title}</h3>
+                <p className="text-gray-400">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          {/* AI Analyst Panel */}
-          <AIPanel
-            isOpen={aiPanelOpen}
-            onClose={() => {
-              setAiPanelOpen(false);
-              setSelectedAsset(null);
-            }}
-            selectedAsset={selectedAsset}
-          />
+      {/* How It Works */}
+      <section id="how-it-works" className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: COLORS.maxionGreen }}>
+              How It Works
+            </h2>
+            <p className="text-xl text-gray-400">Three simple steps to intelligent yield</p>
+          </div>
 
-          {/* Floating AI Button - Mobile Only */}
-          {isMobile && !aiPanelOpen && (
-            <motion.button
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setAiPanelOpen(true)}
-              className="fixed right-4 bottom-20 w-14 h-14 rounded-full shadow-lg flex items-center justify-center z-30"
-              style={{
-                backgroundColor: COLORS.signalCyan,
-                color: COLORS.obsidianBlack,
-              }}
-            >
-              <Brain size={24} />
-            </motion.button>
-          )}
-        </>
-      )}
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: '01', title: 'Connect & Explore', desc: 'Connect your wallet and browse curated RWA opportunities' },
+              { step: '02', title: 'Ask AI Analyst', desc: 'Get personalized insights on yield quality and risk factors' },
+              { step: '03', title: 'Allocate Capital', desc: 'Invest with confidence backed by AI intelligence' },
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.2 }}
+                className="relative"
+              >
+                <div className="text-6xl font-bold mb-4" style={{ color: `${COLORS.maxionGreen}30` }}>
+                  {item.step}
+                </div>
+                <h3 className="text-2xl font-semibold mb-3 text-white">{item.title}</h3>
+                <p className="text-gray-400">{item.desc}</p>
+                {idx < 2 && (
+                  <div className="hidden md:block absolute top-12 -right-4 w-8 h-0.5" style={{ backgroundColor: COLORS.slateGrey }} />
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: COLORS.maxionGreen }}>
+              Simple Pricing
+            </h2>
+            <p className="text-xl text-gray-400">Start free, upgrade when you grow</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[
+              {
+                name: 'Free',
+                price: '$0',
+                features: ['Demo mode', 'Limited AI queries', 'Browse all assets', 'Basic analytics'],
+              },
+              {
+                name: 'Pro',
+                price: '$29',
+                features: ['Live trading', 'Unlimited AI queries', 'Advanced analytics', 'Priority support'],
+                popular: true,
+              },
+              {
+                name: 'Enterprise',
+                price: 'Custom',
+                features: ['Custom integrations', 'API access', 'Dedicated support', 'White-label options'],
+              },
+            ].map((plan, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className={`p-8 rounded-xl border ${plan.popular ? 'ring-2' : ''}`}
+                style={{ 
+                  backgroundColor: COLORS.graphitePanel, 
+                  borderColor: plan.popular ? COLORS.maxionGreen : COLORS.slateGrey,
+                  ringColor: COLORS.maxionGreen,
+                }}
+              >
+                {plan.popular && (
+                  <div className="text-sm font-semibold mb-4 px-3 py-1 rounded-full inline-block" style={{ backgroundColor: `${COLORS.maxionGreen}20`, color: COLORS.maxionGreen }}>
+                    Most Popular
+                  </div>
+                )}
+                <h3 className="text-2xl font-bold mb-2 text-white">{plan.name}</h3>
+                <div className="text-4xl font-bold mb-6 font-mono" style={{ color: COLORS.maxionGreen }}>
+                  {plan.price}
+                  {plan.price !== 'Custom' && <span className="text-lg text-gray-400">/mo</span>}
+                </div>
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2 text-gray-300">
+                      <Check size={16} style={{ color: COLORS.maxionGreen }} />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full py-3 rounded-lg font-semibold"
+                  style={{ 
+                    backgroundColor: plan.popular ? COLORS.maxionGreen : 'transparent',
+                    color: plan.popular ? COLORS.obsidianBlack : COLORS.maxionGreen,
+                    border: plan.popular ? 'none' : `2px solid ${COLORS.maxionGreen}`,
+                  }}
+                >
+                  Get Started
+                </motion.button>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-20 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="max-w-4xl mx-auto text-center p-12 rounded-2xl"
+          style={{ backgroundColor: COLORS.graphitePanel }}
+        >
+          <h2 className="text-4xl md:text-5xl font-bold mb-6" style={{ color: COLORS.maxionGreen }}>
+            Ready to Invest Smarter?
+          </h2>
+          <p className="text-xl text-gray-300 mb-8">
+            Join thousands using AI-powered intelligence for real-world yield
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setAuthMode('signup')}
+            className="px-8 py-4 rounded-lg font-semibold text-lg"
+            style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+          >
+            Start Your Free Trial
+            <ChevronRight className="inline ml-2" size={20} />
+          </motion.button>
+        </motion.div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t py-12 px-4" style={{ borderColor: COLORS.slateGrey }}>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h4 className="font-semibold mb-4 text-white">Product</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white">Features</a></li>
+                <li><a href="#" className="hover:text-white">Pricing</a></li>
+                <li><a href="#" className="hover:text-white">Demo</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-white">Company</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white">About</a></li>
+                <li><a href="#" className="hover:text-white">Blog</a></li>
+                <li><a href="#" className="hover:text-white">Careers</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-white">Resources</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white">Documentation</a></li>
+                <li><a href="#" className="hover:text-white">API</a></li>
+                <li><a href="#" className="hover:text-white">Support</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4 text-white">Legal</h4>
+              <ul className="space-y-2 text-gray-400 text-sm">
+                <li><a href="#" className="hover:text-white">Privacy</a></li>
+                <li><a href="#" className="hover:text-white">Terms</a></li>
+                <li><a href="#" className="hover:text-white">Security</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="text-center text-gray-500 text-sm pt-8 border-t" style={{ borderColor: COLORS.slateGrey }}>
+            © 2025 MAXION. Built on Mantle. All rights reserved.
+          </div>
+        </div>
+      </footer>
+
+      {/* Auth Modal */}
+      <AnimatePresence>
+        {authMode && (
+          <AuthModal mode={authMode} onClose={() => setAuthMode(null)} />
+        )}
+      </AnimatePresence>
     </div>
+  );
+}
+
+// Auth Modal Component
+function AuthModal({ mode, onClose }: { mode: 'signin' | 'signup'; onClose: () => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+
+  const handleSubmit = () => {
+    console.log('Auth:', { mode, email, password, name });
+    // In real implementation, this would call your API
+    onClose();
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 z-50"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-8 rounded-2xl z-50"
+        style={{ backgroundColor: COLORS.graphitePanel }}
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">
+            {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {mode === 'signup' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 rounded-lg outline-none"
+                style={{ backgroundColor: COLORS.slateGrey, color: 'white' }}
+                placeholder="John Doe"
+              />
+            </div>
+          )}
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{ backgroundColor: COLORS.slateGrey, color: 'white' }}
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg outline-none"
+              style={{ backgroundColor: COLORS.slateGrey, color: 'white' }}
+              placeholder="••••••••"
+            />
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleSubmit}
+            className="w-full py-3 rounded-lg font-semibold"
+            style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+          >
+            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+          </motion.button>
+        </div>
+
+        <div className="mt-6 text-center text-sm text-gray-400">
+          {mode === 'signin' ? (
+            <>Don't have an account? <button className="font-semibold" style={{ color: COLORS.maxionGreen }}>Sign up</button></>
+          ) : (
+            <>Already have an account? <button className="font-semibold" style={{ color: COLORS.maxionGreen }}>Sign in</button></>
+          )}
+        </div>
+      </motion.div>
+    </>
   );
 }

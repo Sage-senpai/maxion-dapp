@@ -1,51 +1,110 @@
 // src/components/Dashboard/Overview.tsx
 // Location: src/components/Dashboard/Overview.tsx
-// Main dashboard overview with stats and AI insights
-// Responsive: Grid stacks on mobile, 3 columns on desktop
+// UPDATED: Add mode prop and conditional data loading
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Activity, Shield, Brain, ChevronRight } from 'lucide-react';
 import { COLORS } from '@/lib/constants';
+import { userAPI, allocationAPI } from '@/lib/api';
 
 interface OverviewProps {
   setAiPanelOpen: (open: boolean) => void;
+  mode: 'live' | 'demo';
+  walletAddress?: string;
 }
 
-export function Overview({ setAiPanelOpen }: OverviewProps) {
+// Mock data for demo mode
+const DEMO_STATS = {
+  totalValue: 45280,
+  averageAPY: 7.2,
+  riskProfile: 'Conservative',
+  activities: [
+    { action: 'Allocated', amount: '$10,000', asset: 'US Treasury Bond Pool', time: '2 hours ago' },
+    { action: 'Yield Claimed', amount: '$124.50', asset: 'Real Estate Income Fund', time: '1 day ago' },
+    { action: 'Allocated', amount: '$5,000', asset: 'Infrastructure Debt', time: '3 days ago' },
+  ],
+};
+
+export function Overview({ setAiPanelOpen, mode, walletAddress }: OverviewProps) {
+  const [stats, setStats] = useState(DEMO_STATS);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Load real data in live mode
+    if (mode === 'live' && walletAddress) {
+      loadLiveData();
+    } else {
+      // Use demo data
+      setStats(DEMO_STATS);
+    }
+  }, [mode, walletAddress]);
+
+  const loadLiveData = async () => {
+    if (!walletAddress) return;
+    
+    setLoading(true);
+    try {
+      // Fetch user data from API
+      const userData = await userAPI.getUser(walletAddress);
+      const allocationsData = await allocationAPI.getAllocations(walletAddress);
+
+      setStats({
+        totalValue: userData.user.totalDeposited || 0,
+        averageAPY: allocationsData.stats.averageAPY || 0,
+        riskProfile: userData.user.riskProfile || 'Balanced',
+        activities: allocationsData.allocations.slice(0, 3).map(a => ({
+          action: 'Allocated',
+          amount: `$${a.amount.toLocaleString()}`,
+          asset: a.assetName,
+          time: new Date(a.timestamp).toLocaleDateString(),
+        })),
+      });
+    } catch (error) {
+      console.error('Failed to load live data:', error);
+      // Fallback to demo data
+      setStats(DEMO_STATS);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      {/* Stats Grid - Responsive: 1 col mobile, 3 cols desktop */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           label="Total Value"
-          value="$45,280"
+          value={`$${stats.totalValue.toLocaleString()}`}
           change="+12.4%"
           icon={TrendingUp}
           positive
+          loading={loading}
         />
         <StatCard
           label="Average APY"
-          value="7.2%"
+          value={`${stats.averageAPY}%`}
           subtitle="Across 4 assets"
           icon={Activity}
+          loading={loading}
         />
         <StatCard
           label="Risk Profile"
-          value="Conservative"
-          subtitle="AI-calibrated"
+          value={stats.riskProfile}
+          subtitle={mode === 'live' ? 'AI-calibrated' : 'Demo profile'}
           icon={Shield}
           color={COLORS.signalCyan}
+          loading={loading}
         />
       </div>
 
-      {/* AI Insight Card - Click to open AI panel */}
+      {/* AI Insight Card */}
       <motion.div
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
@@ -65,8 +124,9 @@ export function Overview({ setAiPanelOpen }: OverviewProps) {
               </span>
             </div>
             <p className="text-sm sm:text-base text-gray-300 mb-3">
-              Your portfolio shows strong diversification across low-to-medium risk RWA assets. 
-              The US Treasury allocation provides stability while the Real Estate fund offers growth potential.
+              {mode === 'live' 
+                ? 'Your portfolio shows strong diversification across low-to-medium risk RWA assets.'
+                : 'In demo mode: Explore AI analysis features with sample portfolio data.'}
             </p>
             <motion.button
               whileHover={{ x: 4 }}
@@ -89,32 +149,17 @@ export function Overview({ setAiPanelOpen }: OverviewProps) {
       >
         <h3 className="text-lg font-semibold mb-4 text-gray-200">Recent Activity</h3>
         <div className="space-y-3">
-          <ActivityItem
-            action="Allocated"
-            amount="$10,000"
-            asset="US Treasury Bond Pool"
-            time="2 hours ago"
-          />
-          <ActivityItem
-            action="Yield Claimed"
-            amount="$124.50"
-            asset="Real Estate Income Fund"
-            time="1 day ago"
-          />
-          <ActivityItem
-            action="Allocated"
-            amount="$5,000"
-            asset="Infrastructure Debt"
-            time="3 days ago"
-          />
+          {stats.activities.map((activity, idx) => (
+            <ActivityItem key={idx} {...activity} />
+          ))}
         </div>
       </div>
     </motion.div>
   );
 }
 
-// Stat Card Component
-function StatCard({ label, value, change, subtitle, icon: Icon, positive, color }: any) {
+// StatCard Component
+function StatCard({ label, value, change, subtitle, icon: Icon, positive, color, loading }: any) {
   return (
     <motion.div
       whileHover={{ y: -4 }}
@@ -128,23 +173,29 @@ function StatCard({ label, value, change, subtitle, icon: Icon, positive, color 
         <span className="text-sm text-gray-400">{label}</span>
         {Icon && <Icon size={20} style={{ color: color || COLORS.maxionGreen }} />}
       </div>
-      <div className="font-mono text-2xl sm:text-3xl font-bold mb-2" style={{ color: COLORS.maxionGreen }}>
-        {value}
-      </div>
-      {change && (
-        <span
-          className="text-sm font-medium"
-          style={{ color: positive ? COLORS.maxionGreen : COLORS.riskRed }}
-        >
-          {change}
-        </span>
+      {loading ? (
+        <div className="h-8 w-32 rounded animate-pulse" style={{ backgroundColor: COLORS.slateGrey }} />
+      ) : (
+        <>
+          <div className="font-mono text-2xl sm:text-3xl font-bold mb-2" style={{ color: COLORS.maxionGreen }}>
+            {value}
+          </div>
+          {change && (
+            <span
+              className="text-sm font-medium"
+              style={{ color: positive ? COLORS.maxionGreen : COLORS.riskRed }}
+            >
+              {change}
+            </span>
+          )}
+          {subtitle && <span className="text-sm text-gray-400">{subtitle}</span>}
+        </>
       )}
-      {subtitle && <span className="text-sm text-gray-400">{subtitle}</span>}
     </motion.div>
   );
 }
 
-// Activity Item Component
+// ActivityItem Component
 function ActivityItem({ action, amount, asset, time }: any) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-gray-800 last:border-0">
