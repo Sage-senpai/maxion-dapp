@@ -1,5 +1,6 @@
 // src/components/shared/Toast.tsx
 // Advanced toast notification system with queue management
+'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +25,10 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substring(7);
     const newToast = { ...toast, id };
@@ -32,11 +37,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     
     const duration = toast.duration || 5000;
     setTimeout(() => removeToast(id), duration);
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
+  }, [removeToast]);
 
   return (
     <ToastContext.Provider value={{ addToast, removeToast }}>
@@ -62,9 +63,9 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
 
   const colors = {
     success: COLORS.maxionGreen,
-    error: COLORS.riskRed,
+    error: '#FF3B3B', // fallback if riskRed not defined
     info: COLORS.signalCyan,
-    warning: COLORS.warningAmber,
+    warning: '#FFB800', // fallback if warningAmber not defined
   };
 
   const Icon = icons[toast.type];
@@ -75,27 +76,46 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       initial={{ opacity: 0, y: -20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: 100, scale: 0.95 }}
-      className="p-4 rounded-lg border shadow-lg pointer-events-auto"
+      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+      className="p-4 rounded-lg border shadow-lg pointer-events-auto backdrop-blur-sm"
       style={{
-        backgroundColor: COLORS.graphitePanel,
+        backgroundColor: `${COLORS.graphitePanel}F0`,
         borderColor: color,
+        boxShadow: `0 10px 30px ${color}20`,
       }}
     >
       <div className="flex items-start gap-3">
-        <Icon size={20} style={{ color }} className="flex-shrink-0 mt-0.5" />
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', damping: 15 }}
+        >
+          <Icon size={20} style={{ color }} className="flex-shrink-0 mt-0.5" />
+        </motion.div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm text-gray-200">{toast.title}</p>
           {toast.message && (
             <p className="text-xs text-gray-400 mt-1">{toast.message}</p>
           )}
         </div>
-        <button
+        <motion.button
           onClick={() => onRemove(toast.id)}
           className="text-gray-400 hover:text-gray-200 transition-colors flex-shrink-0"
+          whileHover={{ scale: 1.1, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
         >
           <X size={16} />
-        </button>
+        </motion.button>
       </div>
+      
+      {/* Progress bar */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 h-1 rounded-b-lg"
+        style={{ backgroundColor: color, opacity: 0.3 }}
+        initial={{ scaleX: 1 }}
+        animate={{ scaleX: 0 }}
+        transition={{ duration: (toast.duration || 5000) / 1000, ease: 'linear' }}
+      />
     </motion.div>
   );
 }

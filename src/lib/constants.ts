@@ -16,67 +16,89 @@ export const COLORS = {
   warningAmber: '#FACC15',
 } as const;
 
+export const BREAKPOINTS = {
+  xs: 320,
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  '2xl': 1536,
+} as const;
+
+export const ANIMATION_DURATIONS = {
+  fast: 150,
+  normal: 300,
+  slow: 500,
+  verySlow: 1000,
+} as const;
 // ============================================================================
 // MOCK RWA ASSETS DATA
 // In production, this would come from API/smart contracts
 // ============================================================================
-
+export type RiskLevel = 'Low' | 'Medium' | 'High';
+export type AssetCategory = 'Treasury' | 'Real Estate' | 'Private Credit' | 'Commodities';
 export interface RWAAsset {
   id: string;
   name: string;
-  type: string;
+  category: AssetCategory;
   apy: number;
-  tvl: number;
-  risk: 'Low' | 'Low-Medium' | 'Medium' | 'Medium-High' | 'High';
-  duration: string;
-  minInvestment: number;
+  tvl: string;
+  risk: RiskLevel;
+  minInvestment: string;
   description: string;
+  features: string[];
+  contractAddress?: string;
+  verified: boolean;
 }
 
-export const MOCK_RWA_ASSETS: RWAAsset[] = [
+export const MOCK_ASSETS: RWAAsset[] = [
   {
-    id: 'rwa-001',
-    name: 'US Treasury Bond Pool',
-    type: 'Government Bonds',
-    apy: 4.2,
-    tvl: 12500000,
+    id: 'treasury-1',
+    name: 'US Treasury Token',
+    category: 'Treasury',
+    apy: 5.2,
+    tvl: '$125M',
     risk: 'Low',
-    duration: '6 months',
-    minInvestment: 1000,
-    description: 'Tokenized US Treasury bonds with automatic yield distribution',
+    minInvestment: '100 USDC',
+    description: 'Tokenized US Treasury bills with institutional backing',
+    features: ['Zero default risk', 'Daily liquidity', 'Government backed'],
+    verified: true,
   },
   {
-    id: 'rwa-002',
-    name: 'Real Estate Income Fund',
-    type: 'Real Estate',
-    apy: 7.8,
-    tvl: 8300000,
+    id: 'realestate-1',
+    name: 'Manhattan Property Fund',
+    category: 'Real Estate',
+    apy: 8.5,
+    tvl: '$85M',
     risk: 'Medium',
-    duration: '12 months',
-    minInvestment: 5000,
-    description: 'Diversified commercial real estate portfolio with quarterly distributions',
+    minInvestment: '1,000 USDC',
+    description: 'Prime commercial real estate in New York',
+    features: ['Prime location', 'Rental income', 'Property appreciation'],
+    verified: true,
   },
   {
-    id: 'rwa-003',
-    name: 'Corporate Credit Facility',
-    type: 'Private Credit',
-    apy: 11.5,
-    tvl: 5200000,
-    risk: 'Medium-High',
-    duration: '18 months',
-    minInvestment: 10000,
-    description: 'Senior secured loans to mid-market companies',
+    id: 'credit-1',
+    name: 'Senior Credit Pool',
+    category: 'Private Credit',
+    apy: 12.3,
+    tvl: '$45M',
+    risk: 'Medium',
+    minInvestment: '5,000 USDC',
+    description: 'Diversified senior secured lending',
+    features: ['Asset-backed', 'Monthly distributions', 'Credit rated'],
+    verified: true,
   },
   {
-    id: 'rwa-004',
-    name: 'Infrastructure Debt',
-    type: 'Infrastructure',
-    apy: 6.4,
-    tvl: 15800000,
-    risk: 'Low-Medium',
-    duration: '24 months',
-    minInvestment: 2500,
-    description: 'Long-term infrastructure projects with stable cash flows',
+    id: 'commodities-1',
+    name: 'Gold Reserve Token',
+    category: 'Commodities',
+    apy: 3.8,
+    tvl: '$95M',
+    risk: 'Low',
+    minInvestment: '500 USDC',
+    description: 'Physical gold with vault storage',
+    features: ['Physical backing', 'Inflation hedge', 'Instant redemption'],
+    verified: true,
   },
 ];
 
