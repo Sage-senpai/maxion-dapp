@@ -5,12 +5,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "compile": "cd contracts && npm run compile",
     "deploy:testnet": "cd contracts && npm run deploy:testnet",
-    "test": "cd contracts && npm run test"
+    "test": "cd contracts && npm run test",
+    "seed": "ts-node --project tsconfig.json scripts/seed.ts",
+    "seed:clear": "ts-node --project tsconfig.json scripts/seed.ts --clear"
+  
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -38,7 +41,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.27",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.23",
@@ -47,6 +50,7 @@
     "eslint-config-next": "16.0.10",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "ts-node": "^10.9.2",
     "typescript": "^5"
   },
   "engines": {

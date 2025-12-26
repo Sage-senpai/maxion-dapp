@@ -32,5 +32,12 @@
   "exclude": [
     "node_modules",
     "contracts"
-  ]
+  ],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node"
+    },
+    "transpileOnly": true
+  }
 }
