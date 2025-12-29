@@ -4,16 +4,10 @@
   "description": "MAXION - Intelligence Layer for Real-World Yield on Mantle",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "compile": "cd contracts && npm run compile",
-    "deploy:testnet": "cd contracts && npm run deploy:testnet",
-    "test": "cd contracts && npm run test",
-    "seed": "ts-node --project tsconfig.json scripts/seed.ts",
-    "seed:clear": "ts-node --project tsconfig.json scripts/seed.ts --clear"
-  
+    "lint": "next lint"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

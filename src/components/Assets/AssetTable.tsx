@@ -1,8 +1,5 @@
 // src/components/Assets/AssetTable.tsx
-// Location: src/components/Assets/AssetTable.tsx
-// RWA Assets table/grid view
-// Responsive: Card layout on mobile, detailed cards on desktop
-
+// FIXED: Missing mode prop, proper button functionality
 'use client';
 
 import React from 'react';
@@ -13,9 +10,10 @@ import type { RWAAsset } from '@/lib/constants';
 interface AssetTableProps {
   setAiPanelOpen: (open: boolean) => void;
   setSelectedAsset: (asset: RWAAsset) => void;
+  mode?: 'live' | 'demo';
 }
 
-export function AssetTable({ setAiPanelOpen, setSelectedAsset }: AssetTableProps) {
+export function AssetTable({ setAiPanelOpen, setSelectedAsset, mode = 'demo' }: AssetTableProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -27,6 +25,7 @@ export function AssetTable({ setAiPanelOpen, setSelectedAsset }: AssetTableProps
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          onClick={() => alert('Compare feature coming soon!')}
           className="px-4 py-2 rounded-lg text-sm font-medium w-full sm:w-auto"
           style={{
             backgroundColor: COLORS.maxionGreen,

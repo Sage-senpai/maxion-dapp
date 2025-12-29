@@ -1,26 +1,11 @@
 // next.config.js
-// Location: next.config.js (root of project)
-// DELETE next.config.ts if it exists - use this .js version instead
-
+// FIXED: Turbopack compatible, no webpack config
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  reactCompiler: true,
   
-  // Webpack configuration for Web3 packages
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false,
-    };
-    
-    // Handle problematic packages
-    config.externals.push('pino-pretty', 'lokijs', 'encoding');
-    
-    return config;
-  },
+  // Turbopack configuration (empty to silence warnings)
+  turbopack: {},
   
   // Environment variables exposed to browser
   env: {

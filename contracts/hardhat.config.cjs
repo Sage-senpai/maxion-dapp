@@ -1,12 +1,12 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
+// contracts/hardhat.config.js
+// MINIMAL: Hardhat only, no Foundry
 require("@nomicfoundation/hardhat-toolbox");
-require("@nomicfoundation/hardhat-verify");
 require("dotenv/config");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.28",
+    version: "0.8.20",
     settings: {
       optimizer: {
         enabled: true,
