@@ -1,5 +1,5 @@
 // src/app/auth/signup/page.tsx
-// COMPLETELY FIXED: Proper signup with comprehensive error handling
+// FIXED: Proper wallet address generation
 'use client';
 
 import React, { useState } from 'react';
@@ -17,6 +17,16 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
+
+  // FIXED: Generate proper 40-character hex address
+  const generateMockWallet = (): string => {
+    const hexChars = '0123456789abcdef';
+    let wallet = '0x';
+    for (let i = 0; i < 40; i++) {
+      wallet += hexChars[Math.floor(Math.random() * 16)];
+    }
+    return wallet;
+  };
 
   const handleSignUp = async () => {
     console.log('🚀 Signup initiated');
@@ -48,10 +58,15 @@ export default function SignUpPage() {
     setDebugInfo('Validation passed. Creating mock wallet...');
 
     try {
-      // Generate mock wallet
-      const mockWallet = '0x' + Math.random().toString(16).substr(2, 40);
+      // FIXED: Generate proper 40-character wallet address
+      const mockWallet = generateMockWallet();
       console.log('📝 Mock wallet generated:', mockWallet);
       setDebugInfo(`Mock wallet: ${mockWallet.slice(0, 10)}...`);
+
+      // Verify wallet format
+      if (!/^0x[a-fA-F0-9]{40}$/.test(mockWallet)) {
+        throw new Error('Invalid wallet address format generated');
+      }
 
       // Try to create user via API
       console.log('🌐 Calling /api/users...');
@@ -131,7 +146,7 @@ export default function SignUpPage() {
     console.log('🎭 Demo login initiated');
     
     // Just set auth and redirect
-    const mockWallet = '0x' + Math.random().toString(16).substr(2, 40);
+    const mockWallet = generateMockWallet();
     localStorage.setItem('maxion_auth', 'true');
     localStorage.setItem('maxion_email', 'demo@maxion.app');
     localStorage.setItem('maxion_name', 'Demo User');
@@ -373,32 +388,6 @@ export default function SignUpPage() {
               Sign in
             </button>
           </div>
-
-          {/* Debug Panel (Development Only) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-8 p-4 rounded-lg border" style={{ 
-              backgroundColor: COLORS.graphitePanel,
-              borderColor: COLORS.slateGrey 
-            }}>
-              <p className="text-xs font-semibold text-gray-400 mb-2">🔧 Debug Panel</p>
-              <div className="space-y-1 text-xs text-gray-500">
-                <div>API: /api/users</div>
-                <div>Method: POST</div>
-                <div>MongoDB: {process.env.MONGODB_URI ? '✅ Configured' : '❌ Missing'}</div>
-                <button
-                  onClick={() => {
-                    console.log('📋 Environment check:');
-                    console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Set' : 'Missing');
-                    console.log('NODE_ENV:', process.env.NODE_ENV);
-                  }}
-                  className="text-xs underline"
-                  style={{ color: COLORS.maxionGreen }}
-                >
-                  Check Console
-                </button>
-              </div>
-            </div>
-          )}
         </motion.div>
       </div>
     </div>

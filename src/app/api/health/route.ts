@@ -1,74 +1,80 @@
 // src/app/api/health/route.ts
-// Database health check endpoint
-// Visit: http://localhost:3000/api/health
+// Database health check with Supabase
 
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import { User, Allocation, AIAnalysis } from '@/lib/models/schemas';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    // Try to connect
-    await connectDB();
+    // Test connection by counting users
+    const { count: userCount, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('*', { count: 'exact', head: true });
 
-    // Count documents
-    const userCount = await User.countDocuments();
-    const allocationCount = await Allocation.countDocuments();
-    const analysisCount = await AIAnalysis.countDocuments();
+    const { count: allocationCount, error: allocError } = await supabaseAdmin
+      .from('allocations')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: analysisCount, error: analysisError } = await supabaseAdmin
+      .from('ai_analyses')
+      .select('*', { count: 'exact', head: true });
+
+    if (userError || allocError || analysisError) {
+      throw userError || allocError || analysisError;
+    }
 
     // Get sample data
-    const sampleUser = await User.findOne().lean();
-    const recentAllocations = await Allocation.find()
-      .sort({ timestamp: -1 })
-      .limit(3)
-      .lean();
+    const { data: sampleUser } = await supabaseAdmin
+      .from('users')
+      .select('wallet_address, risk_profile, created_at')
+      .limit(1)
+      .single();
+
+    const { data: recentAllocations } = await supabaseAdmin
+      .from('allocations')
+      .select('asset_name, amount, status, timestamp')
+      .order('timestamp', { ascending: false })
+      .limit(3);
 
     return NextResponse.json({
       status: 'healthy',
-      message: 'Database connection successful',
+      message: 'Supabase connection successful',
       timestamp: new Date().toISOString(),
       database: {
         connected: true,
+        type: 'Supabase PostgreSQL',
         collections: {
           users: {
-            count: userCount,
-            sample: sampleUser ? {
-              walletAddress: sampleUser.walletAddress,
-              riskProfile: sampleUser.riskProfile,
-              createdAt: sampleUser.createdAt,
-            } : null,
+            count: userCount || 0,
+            sample: sampleUser || null,
           },
           allocations: {
-            count: allocationCount,
-            recent: recentAllocations.map(a => ({
-              assetName: a.assetName,
-              amount: a.amount,
-              status: a.status,
-              timestamp: a.timestamp,
-            })),
+            count: allocationCount || 0,
+            recent: recentAllocations || [],
           },
           aiAnalyses: {
-            count: analysisCount,
+            count: analysisCount || 0,
           },
         },
       },
       tips: {
-        noData: userCount === 0 ? 'Run: npm run seed' : null,
-        viewData: 'Visit MongoDB Atlas or use MongoDB Compass',
-        testAccount: sampleUser ? `Use wallet: ${sampleUser.walletAddress}` : null,
+        noData: (userCount || 0) === 0 ? 'Run seed script to populate data' : null,
+        viewData: 'Visit Supabase Dashboard > Table Editor',
+        testAccount: sampleUser ? `Use wallet: ${sampleUser.wallet_address}` : null,
       },
     });
   } catch (error: any) {
     return NextResponse.json({
       status: 'error',
-      message: 'Database connection failed',
+      message: 'Supabase connection failed',
       error: error.message,
       timestamp: new Date().toISOString(),
       troubleshooting: [
-        'Check MONGODB_URI in .env.local',
-        'Verify MongoDB Atlas IP whitelist (0.0.0.0/0)',
-        'Ensure MongoDB cluster is running',
-        'Check network connection',
+        'Check NEXT_PUBLIC_SUPABASE_URL in .env.local',
+        'Check NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local',
+        'Check SUPABASE_SERVICE_ROLE_KEY in .env.local',
+        'Verify Supabase project is active',
+        'Check if tables exist in Supabase',
       ],
     }, { status: 500 });
   }

@@ -1,10 +1,8 @@
 // src/app/api/allocations/route.ts
-// Location: src/app/api/allocations/route.ts
-// Allocation tracking API endpoints
+// Allocation tracking API with Supabase
 
 import { NextRequest, NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import { Allocation, User } from '@/lib/models/schemas';
+import { supabaseAdmin } from '@/lib/supabase';
 import { z } from 'zod';
 
 const createAllocationSchema = z.object({
@@ -25,8 +23,6 @@ const createAllocationSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
-
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get('walletAddress');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -41,49 +37,51 @@ export async function GET(request: NextRequest) {
 
     const normalized = walletAddress.toLowerCase();
 
-    const allocations = await Allocation.find({ walletAddress: normalized })
-      .sort({ timestamp: -1 })
-      .limit(limit)
-      .skip(skip)
-      .lean();
+    // Fetch allocations with pagination
+    const { data: allocations, error, count } = await supabaseAdmin
+      .from('allocations')
+      .select('*', { count: 'exact' })
+      .eq('wallet_address', normalized)
+      .order('timestamp', { ascending: false })
+      .range(skip, skip + limit - 1);
 
-    const stats = await Allocation.aggregate([
-      { $match: { walletAddress: normalized, status: 'confirmed' } },
-      {
-        $group: {
-          _id: null,
-          totalAmount: { $sum: '$amount' },
-          totalShares: { $sum: '$shares' },
-          averageAPY: { $avg: '$apy' },
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    if (error) throw error;
+
+    // Calculate stats using Supabase function
+    const { data: stats } = await supabaseAdmin
+      .rpc('get_user_stats', { p_wallet_address: normalized });
+
+    const statsData = stats?.[0] || {
+      total_allocated: 0,
+      total_shares: 0,
+      average_apy: 0,
+      allocation_count: 0,
+    };
 
     return NextResponse.json({
       success: true,
       allocations: allocations.map(a => ({
-        id: a._id,
-        assetId: a.assetId,
-        assetName: a.assetName,
+        id: a.id,
+        assetId: a.asset_id,
+        assetName: a.asset_name,
         amount: a.amount,
         shares: a.shares,
         apy: a.apy,
-        riskLevel: a.riskLevel,
+        riskLevel: a.risk_level,
         timestamp: a.timestamp,
-        txHash: a.txHash,
+        txHash: a.tx_hash,
         status: a.status,
       })),
-      stats: stats[0] || {
-        totalAmount: 0,
-        totalShares: 0,
-        averageAPY: 0,
-        count: 0,
+      stats: {
+        totalAmount: statsData.total_allocated,
+        totalShares: statsData.total_shares,
+        averageAPY: statsData.average_apy,
+        count: statsData.allocation_count,
       },
       pagination: {
         limit,
         skip,
-        total: await Allocation.countDocuments({ walletAddress: normalized }),
+        total: count || 0,
       },
     });
   } catch (error) {
@@ -101,8 +99,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-
     const body = await request.json();
     
     const validation = createAllocationSchema.safeParse(body);
@@ -116,49 +112,123 @@ export async function POST(request: NextRequest) {
     const data = validation.data;
     const normalized = data.walletAddress.toLowerCase();
 
-    let user = await User.findOne({ walletAddress: normalized });
-    if (!user) {
-      user = await User.create({
-        walletAddress: normalized,
-        riskProfile: 'balanced',
-      });
+    // Get or create user
+    let { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('wallet_address', normalized)
+      .single();
+
+    if (userError && userError.code === 'PGRST116') {
+      // User doesn't exist, create them
+      const { data: newUser, error: createError } = await supabaseAdmin
+        .from('users')
+        .insert({ wallet_address: normalized, risk_profile: 'balanced' })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      user = newUser;
+    } else if (userError) {
+      throw userError;
     }
 
-    const allocation = await Allocation.create({
-      userId: user._id,
-      walletAddress: normalized,
-      assetId: data.assetId,
-      assetName: data.assetName,
-      amount: data.amount,
-      shares: data.shares,
-      apy: data.apy,
-      riskLevel: data.riskLevel,
-      txHash: data.txHash,
-      status: data.status || 'pending',
-    });
+    // Create allocation
+    const { data: allocation, error } = await supabaseAdmin
+      .from('allocations')
+      .insert({
+        user_id: user!.id,
+        wallet_address: normalized,
+        asset_id: data.assetId,
+        asset_name: data.assetName,
+        amount: data.amount,
+        shares: data.shares,
+        apy: data.apy,
+        risk_level: data.riskLevel,
+        tx_hash: data.txHash,
+        status: data.status || 'pending',
+      })
+      .select()
+      .single();
 
+    if (error) throw error;
+
+    // Update user total deposited if confirmed
     if (data.status === 'confirmed') {
-      user.totalDeposited += data.amount;
-      user.lastActive = new Date();
-      await user.save();
+      await supabaseAdmin
+        .from('users')
+        .update({
+          total_deposited: supabaseAdmin.raw(`total_deposited + ${data.amount}`),
+          last_active: new Date().toISOString(),
+        })
+        .eq('id', user!.id);
     }
 
     return NextResponse.json({
       success: true,
       allocation: {
-        id: allocation._id,
-        assetId: allocation.assetId,
-        assetName: allocation.assetName,
+        id: allocation.id,
+        assetId: allocation.asset_id,
+        assetName: allocation.asset_name,
         amount: allocation.amount,
         shares: allocation.shares,
         apy: allocation.apy,
-        riskLevel: allocation.riskLevel,
+        riskLevel: allocation.risk_level,
         timestamp: allocation.timestamp,
         status: allocation.status,
       },
     }, { status: 201 });
   } catch (error) {
     console.error('POST /api/allocations error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================================================
+// PATCH - Update allocation status
+// ============================================================================
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, status } = body;
+
+    if (!id || !status) {
+      return NextResponse.json(
+        { error: 'ID and status are required' },
+        { status: 400 }
+      );
+    }
+
+    const { data: allocation, error } = await supabaseAdmin
+      .from('allocations')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Allocation not found' },
+          { status: 404 }
+        );
+      }
+      throw error;
+    }
+
+    return NextResponse.json({
+      success: true,
+      allocation: {
+        id: allocation.id,
+        status: allocation.status,
+      },
+    });
+  } catch (error) {
+    console.error('PATCH /api/allocations error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
