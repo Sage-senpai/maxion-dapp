@@ -1,7 +1,7 @@
 // src/app/app/page.tsx
 // Location: src/app/app/page.tsx
-// Main application (formerly the root page.tsx content)
-// Protected route - requires authentication
+// Main application with integrated multi-chain wallet connection
+// UPDATED: Wallet auto-switches between Live/Demo modes
 
 'use client';
 
@@ -9,14 +9,12 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Brain } from 'lucide-react';
-import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-
+import WalletConnectSystem from '@/components/WalletConnectSystem';
 import { LoadingSequence } from '@/components/LoadingSequence';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileNav } from '@/components/MobileNav';
 import { AIPanel } from '@/components/AIPanel';
-import { ModeSwitcher, ModeBadge } from '@/components/ModeSwitcher';
+import { ModeBadge } from '@/components/ModeSwitcher';
 import { Overview } from '@/components/Dashboard/Overview';
 import { AssetTable } from '@/components/Assets/AssetTable';
 import { AllocateFlow } from '@/components/Allocate/AllocateFlow';
@@ -34,8 +32,7 @@ export default function AppPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [mode, setMode] = useState<'live' | 'demo'>('demo');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
-  const { isConnected, address } = useAccount();
+  const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
 
   // Check authentication on mount
   useEffect(() => {
@@ -47,7 +44,7 @@ export default function AppPage() {
     setIsAuthenticated(true);
   }, [router]);
 
-  // Get mode from URL params
+  // Get mode from URL params (optional override)
   useEffect(() => {
     const modeParam = searchParams.get('mode');
     if (modeParam === 'live' || modeParam === 'demo') {
@@ -55,10 +52,12 @@ export default function AppPage() {
     }
   }, [searchParams]);
 
-  // Handle mode change
-  const handleModeChange = (newMode: 'live' | 'demo') => {
+  // Handle wallet connection mode change
+  const handleWalletModeChange = (newMode: 'live' | 'demo', address?: string) => {
     setMode(newMode);
-    // Update URL without reload
+    setWalletAddress(address);
+    
+    // Update URL to reflect mode
     const url = new URL(window.location.href);
     url.searchParams.set('mode', newMode);
     window.history.pushState({}, '', url.toString());
@@ -73,7 +72,7 @@ export default function AppPage() {
   }, []);
 
   if (!isAuthenticated) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
@@ -95,7 +94,7 @@ export default function AppPage() {
             <Sidebar
               activeView={activeView}
               setActiveView={setActiveView}
-              walletConnected={isConnected}
+              walletConnected={mode === 'live'}
             />
           )}
 
@@ -110,7 +109,7 @@ export default function AppPage() {
               }}
             >
               <div className="flex items-center justify-between p-4">
-                {/* Mobile: Logo | Desktop: Mode Switcher + Badge */}
+                {/* Mobile: Logo | Desktop: Mode Badge */}
                 {isMobile ? (
                   <div>
                     <h1 className="text-xl font-bold" style={{ color: COLORS.maxionGreen }}>
@@ -122,38 +121,24 @@ export default function AppPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <ModeSwitcher 
-                      mode={mode} 
-                      onModeChange={handleModeChange}
-                      walletConnected={isConnected}
-                    />
-                    <ModeBadge mode={mode} />
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-400">Status:</span>
+                      <ModeBadge mode={mode} />
+                    </div>
                   </div>
                 )}
 
-                {/* Connect Wallet Button */}
-                <div className="scale-90 origin-right">
-                  {mode === 'live' ? (
-                    <ConnectButton 
-                      showBalance={!isMobile}
-                      chainStatus="icon"
-                    />
-                  ) : (
-                    <div className="text-xs text-gray-500">
-                      Demo Mode Active
-                    </div>
-                  )}
-                </div>
+                {/* Multi-Chain Wallet Connect Button */}
+                <WalletConnectSystem 
+                  onModeChange={handleWalletModeChange}
+                  currentMode={mode}
+                />
               </div>
 
-              {/* Mobile: Mode Switcher */}
+              {/* Mobile: Mode Badge */}
               {isMobile && (
                 <div className="px-4 pb-4">
-                  <ModeSwitcher 
-                    mode={mode} 
-                    onModeChange={handleModeChange}
-                    walletConnected={isConnected}
-                  />
+                  <ModeBadge mode={mode} />
                 </div>
               )}
             </div>
@@ -171,7 +156,7 @@ export default function AppPage() {
                     <Overview 
                       setAiPanelOpen={setAiPanelOpen}
                       mode={mode}
-                      walletAddress={mode === 'live' ? address : undefined}
+                      walletAddress={walletAddress}
                     />
                   </motion.div>
                 )}
@@ -201,7 +186,7 @@ export default function AppPage() {
                     <AllocateFlow 
                       setAiPanelOpen={setAiPanelOpen}
                       mode={mode}
-                      walletAddress={mode === 'live' ? address : undefined}
+                      walletAddress={walletAddress}
                     />
                   </motion.div>
                 )}
@@ -215,7 +200,7 @@ export default function AppPage() {
                   >
                     <PortfolioView 
                       mode={mode}
-                      walletAddress={mode === 'live' ? address : undefined}
+                      walletAddress={walletAddress}
                     />
                   </motion.div>
                 )}
@@ -240,7 +225,7 @@ export default function AppPage() {
             }}
             selectedAsset={selectedAsset}
             mode={mode}
-            walletAddress={mode === 'live' ? address : undefined}
+            walletAddress={walletAddress}
           />
 
           {/* Floating AI Button - Mobile Only */}
