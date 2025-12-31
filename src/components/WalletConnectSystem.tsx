@@ -146,7 +146,10 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
     }
   };
 
-  const handleWalletConnect = async (walletId, existingAddress = null) => {
+  const handleWalletConnect = async (
+  walletId: string, 
+  existingAddress: string | null = null
+) => {
     setIsConnecting(true);
     setError('');
 
@@ -176,7 +179,10 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
     }
   };
 
-  const connectEVMWallet = async (wallet, existingAddress) => {
+  const connectEVMWallet = async (
+  wallet: typeof WALLET_CONFIGS[0], 
+  existingAddress: string | null
+) =>  {
     if (!window.ethereum) {
       throw new Error(`${wallet.name} not detected. Please install it.`);
     }

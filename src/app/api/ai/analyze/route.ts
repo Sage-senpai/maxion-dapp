@@ -169,12 +169,19 @@ function generateStructuredResponse(
   query: string,
   context: any,
   riskProfile: string
-): string {
+): { content: string; suggestions?: string[] } {
   const lowerQuery = query.toLowerCase();
   
   if (lowerQuery.includes('yield') || lowerQuery.includes('why')) {
     if (context?.assetName) {
-      return `The ${context.assetName} generates yield through diversified revenue streams. The ${context.apy}% APY reflects current market conditions and asset performance.`;
+      return {
+        content: `The ${context.assetName} generates yield through diversified revenue streams. The ${context.apy}% APY reflects current market conditions and asset performance.`,
+        suggestions: [
+          "What are the underlying assets?",
+          "How does this compare to other yield sources?",
+          "What are the risk factors?"
+        ]
+      };
     }
   }
   

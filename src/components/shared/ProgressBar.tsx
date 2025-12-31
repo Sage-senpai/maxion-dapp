@@ -1,7 +1,9 @@
 // src/components/shared/ProgressBar.tsx
 // Progress bar with percentage display
 // ============================================================================
-
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { COLORS } from '@/lib/constants';
 interface ProgressBarProps {
   value: number;
   max?: number;

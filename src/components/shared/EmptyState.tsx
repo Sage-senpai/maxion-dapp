@@ -1,7 +1,10 @@
 // src/components/shared/EmptyState.tsx
 // Empty state component for lists and tables
 // ============================================================================
-
+ 
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { COLORS } from '@/lib/constants';
 interface EmptyStateProps {
   icon?: React.ReactNode;
   title: string;

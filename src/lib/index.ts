@@ -117,9 +117,7 @@ export {
 // ============================================================================
 // DATABASE
 // ============================================================================
-export { default as connectDB } from './mongodb';
-export { User, Allocation, AIAnalysis } from './models/schemas';
-export type { IUser, IAllocation, IAIAnalysis } from './models/schemas';
+
 
 // ============================================================================
 // TYPE RE-EXPORTS

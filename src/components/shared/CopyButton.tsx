@@ -1,7 +1,10 @@
 // src/components/shared/CopyButton.tsx
-// Copy to clipboard button with feedback
 // ============================================================================
 
+import { useState } from 'react';
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { COLORS } from '@/lib/constants';
 interface CopyButtonProps {
   text: string;
   label?: string;

@@ -185,9 +185,9 @@ export default function AppPage() {
                   >
                     <AllocateFlow 
                       setAiPanelOpen={setAiPanelOpen}
-                      mode={mode}
-                      walletAddress={walletAddress}
-                    />
+                               mode={mode}
+                          walletAddress={walletAddress}
+                     />
                   </motion.div>
                 )}
                 

@@ -9,7 +9,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { COLORS } from '@/lib/constants';
 
-export function PortfolioView() {
+interface PortfolioViewProps {
+  mode?: 'live' | 'demo';
+  walletAddress?: string;
+}
+
+export function PortfolioView({ mode = 'demo', walletAddress }: PortfolioViewProps)  {
   const allocations = [
     { asset: 'US Treasury Bond Pool', amount: 15000, apy: 4.2, duration: '6 months' },
     { asset: 'Real Estate Income Fund', amount: 20000, apy: 7.8, duration: '12 months' },

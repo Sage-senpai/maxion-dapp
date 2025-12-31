@@ -1,6 +1,9 @@
 // src/components/shared/LoadingSpinner.tsx
 // Animated loading spinner with customizable size and color
 // ============================================================================
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { COLORS } from '@/lib/constants';
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';

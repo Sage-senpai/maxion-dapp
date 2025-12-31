@@ -13,9 +13,14 @@ import type { RWAAsset } from '@/lib/constants';
 
 interface AllocateFlowProps {
   setAiPanelOpen: (open: boolean) => void;
+  mode?: 'live' | 'demo';
+  walletAddress?: string;
 }
 
-export function AllocateFlow({ setAiPanelOpen }: AllocateFlowProps) {
+export function AllocateFlow({ setAiPanelOpen, 
+  mode = 'demo',
+  walletAddress 
+}: AllocateFlowProps) {
   const [step, setStep] = useState(1);
   const [amount, setAmount] = useState('');
   const [selectedAsset, setSelectedAsset] = useState<RWAAsset | null>(null);

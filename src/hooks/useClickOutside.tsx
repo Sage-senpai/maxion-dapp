@@ -1,6 +1,5 @@
 // src/hooks/useClickOutside.tsx
-// Detect clicks outside an element
-// ============================================================================
+import { useEffect } from 'react';
 
 export function useClickOutside(
   ref: React.RefObject<HTMLElement>,
@@ -13,10 +12,8 @@ export function useClickOutside(
       }
       handler(event);
     };
-
     document.addEventListener('mousedown', listener);
     document.addEventListener('touchstart', listener);
-
     return () => {
       document.removeEventListener('mousedown', listener);
       document.removeEventListener('touchstart', listener);

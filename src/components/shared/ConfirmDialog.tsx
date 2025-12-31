@@ -1,6 +1,11 @@
 // src/components/shared/ConfirmDialog.tsx
-// Confirmation dialog for destructive actions
-// ============================================================================
+// FIXED: Added React import and COLORS
+'use client';
+
+import React from 'react';
+import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
+import { COLORS } from '@/lib/constants';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -34,10 +39,26 @@ export function ConfirmDialog({
     onClose();
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
-      <div className="space-y-4">
-        <p className="text-sm text-gray-300">{message}</p>
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+      />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-6 rounded-xl z-50"
+        style={{ backgroundColor: COLORS.graphitePanel }}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+        <p className="text-sm text-gray-300 mb-6">{message}</p>
         <div className="flex gap-3">
           <button
             onClick={onClose}
@@ -61,6 +82,6 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </Modal>
+    </>
   );
 }

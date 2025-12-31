@@ -309,7 +309,7 @@ export default function LandingPage() {
                 style={{ 
                   backgroundColor: COLORS.graphitePanel, 
                   borderColor: plan.popular ? COLORS.maxionGreen : COLORS.slateGrey,
-                  ringColor: COLORS.maxionGreen,
+                  boxShadow: plan.popular ? `0 10px 30px ${COLORS.maxionGreen}20` : 'none',
                 }}
               >
                 {plan.popular && (

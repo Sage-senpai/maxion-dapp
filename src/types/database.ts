@@ -1,5 +1,5 @@
 // src/types/database.ts
-// Auto-generated Supabase types for MAXION
+// FIXED: Proper Supabase type generation with correct schema structure
 
 export type Json =
   | string
@@ -40,6 +40,7 @@ export interface Database {
           total_withdrawn?: number
           risk_profile?: 'conservative' | 'balanced' | 'aggressive'
         }
+        Relationships: []
       }
       allocations: {
         Row: {
@@ -84,6 +85,15 @@ export interface Database {
           tx_hash?: string | null
           status?: 'pending' | 'confirmed' | 'failed'
         }
+        Relationships: [
+          {
+            foreignKeyName: "allocations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       ai_analyses: {
         Row: {
@@ -119,6 +129,15 @@ export interface Database {
           model_used?: string
           tokens_used?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analyses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       asset_performance: {
         Row: {
@@ -151,33 +170,11 @@ export interface Database {
           last_updated?: string
           performance_history?: Json | null
         }
+        Relationships: []
       }
     }
     Views: {
-      user_portfolio_overview: {
-        Row: {
-          wallet_address: string
-          risk_profile: 'conservative' | 'balanced' | 'aggressive'
-          total_allocations: number
-          total_invested: number
-          weighted_apy: number
-          total_shares: number
-          last_active: string
-        }
-      }
-      recent_activity: {
-        Row: {
-          id: string
-          wallet_address: string
-          asset_name: string
-          amount: number
-          apy: number
-          status: 'pending' | 'confirmed' | 'failed'
-          timestamp: string
-          tx_hash: string | null
-          activity_type: string
-        }
-      }
+      [_ in never]: never
     }
     Functions: {
       get_user_stats: {
@@ -195,10 +192,16 @@ export interface Database {
     Enums: {
       [_ in never]: never
     }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
 
-// Helper types for easier access
+// Helper types
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
+export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T]
+
 export type User = Database['public']['Tables']['users']['Row']
 export type UserInsert = Database['public']['Tables']['users']['Insert']
 export type UserUpdate = Database['public']['Tables']['users']['Update']
@@ -210,10 +213,3 @@ export type AllocationUpdate = Database['public']['Tables']['allocations']['Upda
 export type AIAnalysis = Database['public']['Tables']['ai_analyses']['Row']
 export type AIAnalysisInsert = Database['public']['Tables']['ai_analyses']['Insert']
 export type AIAnalysisUpdate = Database['public']['Tables']['ai_analyses']['Update']
-
-export type AssetPerformance = Database['public']['Tables']['asset_performance']['Row']
-export type AssetPerformanceInsert = Database['public']['Tables']['asset_performance']['Insert']
-export type AssetPerformanceUpdate = Database['public']['Tables']['asset_performance']['Update']
-
-export type UserPortfolioOverview = Database['public']['Views']['user_portfolio_overview']['Row']
-export type RecentActivity = Database['public']['Views']['recent_activity']['Row']

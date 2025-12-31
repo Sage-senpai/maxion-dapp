@@ -1,6 +1,10 @@
 // src/components/shared/Tooltip.tsx
 // Tooltip with customizable positioning
 // ============================================================================
+import { useState } from "react";
+import React  from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { COLORS } from '@/lib/constants';
 
 interface TooltipProps {
   content: string;
