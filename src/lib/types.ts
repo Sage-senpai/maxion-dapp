@@ -1,5 +1,10 @@
-// 2. src/lib/types.ts
+// src/lib/types.ts
+// FIXED: Export RiskLevel type
 // ============================================================================
+
+// Export RiskLevel from constants
+export type { RiskLevel } from './constants';
+
 export interface UserPortfolio {
   totalValue: number;
   totalInvested: number;
@@ -39,7 +44,7 @@ export interface AIAnalysisRequest {
     assetId?: string;
     assetName?: string;
     apy?: number;
-    riskLevel?: RiskLevel;
+    riskLevel?: string;
   };
 }
 
