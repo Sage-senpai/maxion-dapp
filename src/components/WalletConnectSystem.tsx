@@ -1,5 +1,6 @@
 // src/components/WalletConnectSystem.tsx
-// FIXED: Proper TypeScript types for all wallet methods
+
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet, ChevronDown, Check, X, LogOut, Loader2, AlertCircle, ExternalLink, Zap, Eye } from 'lucide-react';
@@ -63,30 +64,6 @@ const WALLET_CONFIGS: WalletConfig[] = [
     type: 'multi-chain',
     detectMethod: () => typeof window !== 'undefined' && !!window.solana?.isPhantom,
   },
-  {
-    id: 'subwallet',
-    name: 'SubWallet',
-    icon: '🔷',
-    chains: ['polkadot', 'ethereum', 'mantle'],
-    type: 'multi-chain',
-    detectMethod: () => typeof window !== 'undefined' && !!window.injectedWeb3?.subwallet,
-  },
-  {
-    id: 'eternl',
-    name: 'Eternl',
-    icon: '♾️',
-    chains: ['cardano', 'ethereum'],
-    type: 'multi-chain',
-    detectMethod: () => typeof window !== 'undefined' && !!window.cardano?.eternl,
-  },
-  {
-    id: 'trust',
-    name: 'Trust Wallet',
-    icon: '🛡️',
-    chains: ['mantle', 'ethereum', 'binance'],
-    type: 'evm',
-    detectMethod: () => typeof window !== 'undefined' && !!window.ethereum?.isTrust,
-  },
 ];
 
 const MANTLE_NETWORK = {
@@ -126,11 +103,6 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
         if (accounts[0]) {
           await handleWalletConnect('metamask', accounts[0]);
         }
-      } else if (window.solana?.isPhantom && window.solana.isConnected) {
-        const publicKey = window.solana.publicKey?.toString();
-        if (publicKey) {
-          await connectPhantomWallet(WALLET_CONFIGS.find(w => w.id === 'phantom')!);
-        }
       }
     } catch (err) {
       console.log('Connection check skipped');
@@ -145,18 +117,13 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
       const wallet = WALLET_CONFIGS.find(w => w.id === walletId);
       if (!wallet) throw new Error('Wallet not found');
       
-      if (wallet.type === 'evm' || wallet.id === 'phantom') {
-        if (['metamask', 'coinbase', 'trust'].includes(walletId)) {
-          await connectEVMWallet(wallet, existingAddress);
-        } else if (walletId === 'phantom') {
-          await connectPhantomWallet(wallet);
-        } else if (walletId === 'walletconnect') {
-          await connectWalletConnect(wallet);
-        }
-      } else if (wallet.id === 'eternl') {
-        await connectCardanoWallet(wallet);
-      } else if (wallet.id === 'subwallet') {
-        await connectSubWallet(wallet);
+      if (['metamask', 'coinbase'].includes(walletId)) {
+        await connectEVMWallet(wallet, existingAddress);
+      } else if (walletId === 'phantom') {
+        await connectPhantomWallet(wallet);
+      } else if (walletId === 'walletconnect') {
+        setError('WalletConnect integration coming soon!');
+        return;
       }
 
       setIsOpen(false);
@@ -244,11 +211,9 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
       const response = await window.solana.connect();
       const publicKey = response.publicKey.toString();
 
-      const balanceSOL = '1.2345'; // Mock for demo
-
       setConnectedWallet(wallet);
       setAddress(publicKey);
-      setBalance(balanceSOL);
+      setBalance('1.2345');
       setChainId('solana-mainnet');
 
       window.solana.on('disconnect', () => {
@@ -261,51 +226,6 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
         throw new Error('Connection rejected by user');
       }
       throw new Error(`Failed to connect Phantom: ${err.message}`);
-    }
-  };
-
-  const connectWalletConnect = async (wallet: WalletConfig) => {
-    setError('WalletConnect integration coming soon!');
-    throw new Error('WalletConnect coming soon!');
-  };
-
-  const connectCardanoWallet = async (wallet: WalletConfig) => {
-    if (!window.cardano?.eternl) {
-      window.open('https://eternl.io/', '_blank');
-      throw new Error('Eternl wallet not detected.');
-    }
-
-    try {
-      const api = await window.cardano.eternl.enable();
-      const addresses = await api.getUsedAddresses();
-      const address = addresses[0];
-
-      setConnectedWallet(wallet);
-      setAddress(address);
-      setBalance('0.00');
-      setChainId('cardano-mainnet');
-    } catch (err: any) {
-      throw new Error(`Failed to connect Eternl: ${err.message}`);
-    }
-  };
-
-  const connectSubWallet = async (wallet: WalletConfig) => {
-    if (!window.injectedWeb3?.subwallet) {
-      window.open('https://subwallet.app/', '_blank');
-      throw new Error('SubWallet not detected.');
-    }
-
-    try {
-      const accounts = await window.injectedWeb3.subwallet.request({
-        method: 'eth_requestAccounts'
-      }) as string[];
-
-      setConnectedWallet(wallet);
-      setAddress(accounts[0]);
-      setBalance('0.00');
-      setChainId('polkadot');
-    } catch (err: any) {
-      throw new Error(`Failed to connect SubWallet: ${err.message}`);
     }
   };
 
@@ -338,8 +258,6 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
     if (id === 5003) return 'Mantle Testnet';
     if (id === 5000) return 'Mantle';
     if (id === 'solana-mainnet') return 'Solana';
-    if (id === 'cardano-mainnet') return 'Cardano';
-    if (id === 'polkadot') return 'Polkadot';
     return `Chain ${id}`;
   };
 
@@ -385,7 +303,7 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
         </motion.button>
       )}
 
-      {/* Disconnect Dropdown - keeping existing UI */}
+      {/* Disconnect Dropdown */}
       <AnimatePresence>
         {showDisconnect && connectedWallet && (
           <motion.div
@@ -457,118 +375,130 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
         )}
       </AnimatePresence>
 
-      {/* Modal - keeping existing structure */}
+      {/* FIXED: Modal - Now perfectly centered and responsive */}
       <AnimatePresence>
         {isOpen && (
           <>
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => !isConnecting && setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999]"
             />
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-2xl shadow-2xl z-50"
-              style={{ backgroundColor: COLORS.graphitePanel }}
-            >
-              <div className="p-6 border-b" style={{ borderColor: COLORS.slateGrey }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Connect Wallet</h2>
-                    <p className="text-sm text-gray-400 mt-1">Choose your preferred wallet</p>
-                  </div>
-                  <button
-                    onClick={() => !isConnecting && setIsOpen(false)}
-                    className="text-gray-400 hover:text-white"
-                  >
-                    <X size={24} />
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="px-4 pt-4">
-                  <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: `${COLORS.warningAmber}20` }}>
-                    <AlertCircle size={20} style={{ color: COLORS.warningAmber }} className="flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold" style={{ color: COLORS.warningAmber }}>Note</div>
-                      <div className="text-xs text-gray-300 mt-1">{error}</div>
-                    </div>
-                    <button onClick={() => setError('')} className="text-gray-400 hover:text-white">
-                      <X size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="p-4 max-h-96 overflow-y-auto">
-                <div className="space-y-2">
-                  {WALLET_CONFIGS.map((wallet, idx) => {
-                    const isDetected = wallet.detectMethod();
-
-                    return (
-                      <motion.button
-                        key={wallet.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
-                        whileHover={!isConnecting ? { scale: 1.02, x: 4 } : {}}
-                        whileTap={!isConnecting ? { scale: 0.98 } : {}}
-                        onClick={() => !isConnecting && handleWalletConnect(wallet.id)}
-                        disabled={isConnecting}
-                        className="w-full p-4 rounded-xl border text-left transition-all disabled:opacity-50"
-                        style={{
-                          backgroundColor: COLORS.obsidianBlack,
-                          borderColor: isDetected ? COLORS.maxionGreen : COLORS.slateGrey,
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl">{wallet.icon}</span>
-                            <div>
-                              <div className="font-semibold text-white">{wallet.name}</div>
-                              <div className="text-xs text-gray-400 mt-0.5">
-                                {wallet.chains.slice(0, 2).join(', ')}
-                                {wallet.chains.length > 2 && ` +${wallet.chains.length - 2}`}
-                              </div>
-                            </div>
-                          </div>
-                          {isDetected ? (
-                            <Check size={20} style={{ color: COLORS.maxionGreen }} />
-                          ) : (
-                            <ExternalLink size={16} className="text-gray-500" />
-                          )}
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {isConnecting && (
+            {/* Modal - FIXED: Perfect centering on all screen sizes */}
+            <div className="fixed inset-0 z-[1000] overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4">
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="absolute inset-0 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: `${COLORS.obsidianBlack}CC`, backdropFilter: 'blur(4px)' }}
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                  className="w-full max-w-md rounded-2xl shadow-2xl"
+                  style={{ backgroundColor: COLORS.graphitePanel }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="text-center">
-                    <Loader2 size={48} className="animate-spin mx-auto mb-4" style={{ color: COLORS.maxionGreen }} />
-                    <div className="text-white font-semibold">Connecting...</div>
-                    <div className="text-sm text-gray-400 mt-1">Approve in your wallet</div>
+                  {/* Header */}
+                  <div className="p-6 border-b" style={{ borderColor: COLORS.slateGrey }}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-xl font-bold text-white">Connect Wallet</h2>
+                        <p className="text-sm text-gray-400 mt-1">Choose your preferred wallet</p>
+                      </div>
+                      <button
+                        onClick={() => !isConnecting && setIsOpen(false)}
+                        className="text-gray-400 hover:text-white transition-colors"
+                      >
+                        <X size={24} />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Error Display */}
+                  {error && (
+                    <div className="px-4 pt-4">
+                      <div className="flex items-start gap-3 p-3 rounded-lg" style={{ backgroundColor: `${COLORS.warningAmber}20` }}>
+                        <AlertCircle size={20} style={{ color: COLORS.warningAmber }} className="flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold" style={{ color: COLORS.warningAmber }}>Note</div>
+                          <div className="text-xs text-gray-300 mt-1">{error}</div>
+                        </div>
+                        <button onClick={() => setError('')} className="text-gray-400 hover:text-white">
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wallet List */}
+                  <div className="p-4 max-h-[60vh] overflow-y-auto">
+                    <div className="space-y-2">
+                      {WALLET_CONFIGS.map((wallet, idx) => {
+                        const isDetected = wallet.detectMethod();
+
+                        return (
+                          <motion.button
+                            key={wallet.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            whileHover={!isConnecting ? { scale: 1.02, x: 4 } : {}}
+                            whileTap={!isConnecting ? { scale: 0.98 } : {}}
+                            onClick={() => !isConnecting && handleWalletConnect(wallet.id)}
+                            disabled={isConnecting}
+                            className="w-full p-4 rounded-xl border text-left transition-all disabled:opacity-50"
+                            style={{
+                              backgroundColor: COLORS.obsidianBlack,
+                              borderColor: isDetected ? COLORS.maxionGreen : COLORS.slateGrey,
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="text-3xl">{wallet.icon}</span>
+                                <div>
+                                  <div className="font-semibold text-white">{wallet.name}</div>
+                                  <div className="text-xs text-gray-400 mt-0.5">
+                                    {wallet.chains.slice(0, 2).join(', ')}
+                                    {wallet.chains.length > 2 && ` +${wallet.chains.length - 2}`}
+                                  </div>
+                                </div>
+                              </div>
+                              {isDetected ? (
+                                <Check size={20} style={{ color: COLORS.maxionGreen }} />
+                              ) : (
+                                <ExternalLink size={16} className="text-gray-500" />
+                              )}
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Loading Overlay */}
+                  {isConnecting && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute inset-0 rounded-2xl flex items-center justify-center"
+                      style={{ backgroundColor: `${COLORS.obsidianBlack}CC`, backdropFilter: 'blur(4px)' }}
+                    >
+                      <div className="text-center">
+                        <Loader2 size={48} className="animate-spin mx-auto mb-4" style={{ color: COLORS.maxionGreen }} />
+                        <div className="text-white font-semibold">Connecting...</div>
+                        <div className="text-sm text-gray-400 mt-1">Approve in your wallet</div>
+                      </div>
+                    </motion.div>
+                  )}
                 </motion.div>
-              )}
-            </motion.div>
+              </div>
+            </div>
           </>
         )}
       </AnimatePresence>
 
+      {/* Demo Mode Badge */}
       {!connectedWallet && (
         <div className="absolute top-full right-0 mt-2">
           <div className="text-xs px-2 py-1 rounded flex items-center gap-1" style={{ backgroundColor: `${COLORS.signalCyan}20`, color: COLORS.signalCyan }}>

@@ -1,5 +1,5 @@
 // src/app/api/ai/analyze/route.ts
-// AI analysis API with Supabase
+// FIXED: Type errors for AI analysis responses
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       throw userError;
     }
 
-    // Generate AI response (using your existing logic)
+    // Generate AI response
     const aiResponse = await generateAIResponse(query, context, user!.risk_profile);
 
     // Save analysis to database
@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
         query: analysis.query,
         response: analysis.response,
         timestamp: analysis.timestamp,
+        suggestions: aiResponse.suggestions, // Include suggestions
       },
     });
   } catch (error) {
@@ -148,28 +149,44 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper function (keep your existing AI response logic)
+// ============================================================================
+// Helper function - FIXED return type
+// ============================================================================
+
 async function generateAIResponse(
   query: string,
   context: any,
   userRiskProfile: string
-): Promise<{ response: string; model: string; tokensUsed: number }> {
-  // Your existing AI response generation logic here
-  const response = generateStructuredResponse(query, context, userRiskProfile);
+): Promise<{ response: string; model: string; tokensUsed: number; suggestions?: string[] }> {
+  // Generate structured response
+  const structuredResponse = generateStructuredResponse(query, context, userRiskProfile);
+  
+  // FIXED: Extract content string from response
+  const responseText = typeof structuredResponse === 'string' 
+    ? structuredResponse 
+    : structuredResponse.content;
+  
+  const suggestions = typeof structuredResponse === 'object' 
+    ? structuredResponse.suggestions 
+    : undefined;
   
   return {
-    response,
+    response: responseText,
     model: 'claude-sonnet-4',
-    tokensUsed: Math.ceil(response.length / 4),
+    tokensUsed: Math.ceil(responseText.length / 4),
+    suggestions,
   };
 }
 
-// Keep your existing generateStructuredResponse function
+// ============================================================================
+// Generate structured response - FIXED return type
+// ============================================================================
+
 function generateStructuredResponse(
   query: string,
   context: any,
   riskProfile: string
-): { content: string; suggestions?: string[] } {
+): { content: string; suggestions?: string[] } | string {
   const lowerQuery = query.toLowerCase();
   
   if (lowerQuery.includes('yield') || lowerQuery.includes('why')) {
@@ -185,5 +202,39 @@ function generateStructuredResponse(
     }
   }
   
-  return "I can help you understand yield sources, risk factors, and allocation strategies. What would you like to explore?";
+  if (lowerQuery.includes('risk')) {
+    if (context?.assetName) {
+      return {
+        content: `${context.assetName} carries a **${context.riskLevel || 'Medium'}** risk profile. Key factors include market volatility, regulatory requirements, and liquidity considerations.`,
+        suggestions: [
+          "Allocation strategy",
+          "Insurance coverage",
+          "Exit liquidity"
+        ]
+      };
+    }
+  }
+  
+  if (lowerQuery.includes('allocat') || lowerQuery.includes('how much')) {
+    if (context?.assetName) {
+      return {
+        content: `For **${context.assetName}**, consider:\n\n**Conservative (5-15%)**: Capital preservation focus\n**Balanced (15-30%)**: Growth with managed risk\n**Aggressive (30-50%)**: Maximum returns`,
+        suggestions: [
+          "Portfolio analysis",
+          "Rebalancing strategy",
+          "Tax implications"
+        ]
+      };
+    }
+  }
+  
+  // Default response with structure
+  return {
+    content: "I can help you understand yield sources, risk factors, and allocation strategies. What would you like to explore?",
+    suggestions: [
+      "Analyze portfolio",
+      "Best yields now",
+      "Risk assessment"
+    ]
+  };
 }

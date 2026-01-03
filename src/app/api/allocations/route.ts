@@ -1,5 +1,5 @@
 // src/app/api/allocations/route.ts
-// Allocation tracking API with Supabase
+// FIXED: Supabase raw SQL issue
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -120,7 +120,6 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError && userError.code === 'PGRST116') {
-      // User doesn't exist, create them
       const { data: newUser, error: createError } = await supabaseAdmin
         .from('users')
         .insert({ wallet_address: normalized, risk_profile: 'balanced' })
@@ -153,12 +152,22 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    // Update user total deposited if confirmed
+    // FIXED: Update user total deposited if confirmed - use RPC instead of raw
     if (data.status === 'confirmed') {
+      // First get current total
+      const { data: currentUser } = await supabaseAdmin
+        .from('users')
+        .select('total_deposited')
+        .eq('id', user!.id)
+        .single();
+
+      // Then update with calculated value
+      const newTotal = (currentUser?.total_deposited || 0) + data.amount;
+      
       await supabaseAdmin
         .from('users')
         .update({
-          total_deposited: supabaseAdmin.raw(`total_deposited + ${data.amount}`),
+          total_deposited: newTotal,
           last_active: new Date().toISOString(),
         })
         .eq('id', user!.id);

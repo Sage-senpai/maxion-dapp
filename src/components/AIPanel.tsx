@@ -109,7 +109,7 @@ export function AIPanel({ isOpen, onClose, selectedAsset, mode, walletAddress }:
           role: 'assistant',
           content: response.analysis.response,
           timestamp: new Date(),
-          suggestions: response.analysis.suggestions,
+          suggestions: [],
         }]);
       } else {
         // Demo mode - simulate response

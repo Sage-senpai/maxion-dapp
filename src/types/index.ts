@@ -78,6 +78,7 @@ export interface AIAnalysis {
   timestamp: Date;
   modelUsed: string;
   tokensUsed?: number;
+  suggestions?: string[];
 }
 
 export interface AIAnalysisContext {
