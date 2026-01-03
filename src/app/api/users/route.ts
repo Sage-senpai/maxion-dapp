@@ -1,5 +1,5 @@
 // src/app/api/users/route.ts
-// User management API with Supabase
+// FIXED: Better error messages, proper 404 handling, auto-creation support
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -29,12 +29,28 @@ export async function GET(request: NextRequest) {
 
     if (!walletAddress) {
       return NextResponse.json(
-        { error: 'Wallet address is required' },
+        { 
+          success: false,
+          error: 'Wallet address is required' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate wallet address format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Invalid wallet address format' 
+        },
         { status: 400 }
       );
     }
 
     const normalized = walletAddress.toLowerCase();
+
+    console.log('🔍 Fetching user:', normalized);
 
     // Fetch user from Supabase
     const { data: user, error } = await supabaseAdmin
@@ -44,15 +60,25 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error('❌ Supabase error:', error);
+      
       if (error.code === 'PGRST116') {
-        // User not found
+        // User not found - return 404 with helpful message
         return NextResponse.json(
-          { error: 'User not found' },
+          { 
+            success: false,
+            error: 'User not found',
+            message: 'No account exists for this wallet address. Please create an account first.',
+            code: 'USER_NOT_FOUND'
+          },
           { status: 404 }
         );
       }
+      
       throw error;
     }
+
+    console.log('✅ User found:', user);
 
     // Update last active timestamp
     await supabaseAdmin
@@ -72,10 +98,14 @@ export async function GET(request: NextRequest) {
         riskProfile: user.risk_profile,
       },
     });
-  } catch (error) {
-    console.error('GET /api/users error:', error);
+  } catch (error: any) {
+    console.error('❌ GET /api/users error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Internal server error',
+        message: error.message || 'An unexpected error occurred'
+      },
       { status: 500 }
     );
   }
@@ -92,7 +122,11 @@ export async function POST(request: NextRequest) {
     const validation = createUserSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid input', details: validation.error.errors },
+        { 
+          success: false,
+          error: 'Invalid input', 
+          details: validation.error.errors 
+        },
         { status: 400 }
       );
     }
@@ -100,16 +134,29 @@ export async function POST(request: NextRequest) {
     const { walletAddress, riskProfile } = validation.data;
     const normalized = walletAddress.toLowerCase();
 
+    console.log('👤 Creating user:', normalized);
+
     // Check if user already exists
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('wallet_address', normalized)
       .single();
 
     if (existingUser) {
+      console.log('ℹ️ User already exists:', existingUser);
       return NextResponse.json(
-        { error: 'User already exists', user: existingUser },
+        { 
+          success: false,
+          error: 'User already exists',
+          code: 'USER_EXISTS',
+          user: {
+            id: existingUser.id,
+            walletAddress: existingUser.wallet_address,
+            createdAt: existingUser.created_at,
+            riskProfile: existingUser.risk_profile,
+          }
+        },
         { status: 409 }
       );
     }
@@ -120,11 +167,18 @@ export async function POST(request: NextRequest) {
       .insert({
         wallet_address: normalized,
         risk_profile: riskProfile || 'balanced',
+        total_deposited: 0,
+        total_withdrawn: 0,
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Failed to create user:', error);
+      throw error;
+    }
+
+    console.log('✅ User created successfully:', newUser);
 
     return NextResponse.json({
       success: true,
@@ -135,10 +189,14 @@ export async function POST(request: NextRequest) {
         riskProfile: newUser.risk_profile,
       },
     }, { status: 201 });
-  } catch (error) {
-    console.error('POST /api/users error:', error);
+  } catch (error: any) {
+    console.error('❌ POST /api/users error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Internal server error',
+        message: error.message || 'Failed to create user'
+      },
       { status: 500 }
     );
   }
@@ -155,13 +213,19 @@ export async function PATCH(request: NextRequest) {
     const validation = updateUserSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json(
-        { error: 'Invalid input', details: validation.error.errors },
+        { 
+          success: false,
+          error: 'Invalid input', 
+          details: validation.error.errors 
+        },
         { status: 400 }
       );
     }
 
     const { walletAddress, ...updates } = validation.data;
     const normalized = walletAddress.toLowerCase();
+
+    console.log('📝 Updating user:', normalized);
 
     // Build update object
     const updateData: any = {};
@@ -178,14 +242,22 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error('❌ Update error:', error);
+      
       if (error.code === 'PGRST116') {
         return NextResponse.json(
-          { error: 'User not found' },
+          { 
+            success: false,
+            error: 'User not found',
+            code: 'USER_NOT_FOUND'
+          },
           { status: 404 }
         );
       }
       throw error;
     }
+
+    console.log('✅ User updated:', updatedUser);
 
     return NextResponse.json({
       success: true,
@@ -199,10 +271,14 @@ export async function PATCH(request: NextRequest) {
         riskProfile: updatedUser.risk_profile,
       },
     });
-  } catch (error) {
-    console.error('PATCH /api/users error:', error);
+  } catch (error: any) {
+    console.error('❌ PATCH /api/users error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        success: false,
+        error: 'Internal server error',
+        message: error.message || 'Failed to update user'
+      },
       { status: 500 }
     );
   }

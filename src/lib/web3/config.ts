@@ -1,11 +1,11 @@
-// lib/web3/config.ts
-// Web3 configuration for MAXION - wagmi + RainbowKit on Mantle
+// src/lib/web3/config.ts
+// FIXED: Multiple RPC endpoints for better reliability, backup URLs
 
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { Chain } from 'wagmi/chains';
 
 // ============================================================================
-// MANTLE CHAIN DEFINITIONS
+// MANTLE CHAIN DEFINITIONS WITH MULTIPLE RPC ENDPOINTS
 // ============================================================================
 
 export const mantleTestnet: Chain = {
@@ -18,10 +18,17 @@ export const mantleTestnet: Chain = {
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.testnet.mantle.xyz'],
+      http: [
+        'https://rpc.testnet.mantle.xyz',
+        'https://mantle-testnet.public.blastapi.io',
+        'https://mantle-sepolia.gateway.tenderly.co',
+      ],
     },
     public: {
-      http: ['https://rpc.testnet.mantle.xyz'],
+      http: [
+        'https://rpc.testnet.mantle.xyz',
+        'https://mantle-testnet.public.blastapi.io',
+      ],
     },
   },
   blockExplorers: {
@@ -43,10 +50,17 @@ export const mantleMainnet: Chain = {
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.mantle.xyz'],
+      http: [
+        'https://rpc.mantle.xyz',
+        'https://mantle.public.blastapi.io',
+        'https://mantle.gateway.tenderly.co',
+      ],
     },
     public: {
-      http: ['https://rpc.mantle.xyz'],
+      http: [
+        'https://rpc.mantle.xyz',
+        'https://mantle.public.blastapi.io',
+      ],
     },
   },
   blockExplorers: {
@@ -89,4 +103,15 @@ export function getContracts(chainId: number) {
   if (chainId === 5003) return CONTRACTS.mantleTestnet;
   if (chainId === 5000) return CONTRACTS.mantleMainnet;
   return CONTRACTS.mantleTestnet; // Default to testnet
+}
+
+// Helper to get RPC URL
+export function getRpcUrl(chainId: number): string {
+  if (chainId === 5003) {
+    return mantleTestnet.rpcUrls.default.http[0];
+  }
+  if (chainId === 5000) {
+    return mantleMainnet.rpcUrls.default.http[0];
+  }
+  return mantleTestnet.rpcUrls.default.http[0];
 }
