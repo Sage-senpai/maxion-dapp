@@ -5,11 +5,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed-supabase.ts",
-    "db:types": "supabase gen types typescript --project-id YOUR_PROJECT_ID > src/types/database.ts"
+    "clean": "rm -rf .next node_modules/.cache",
+    "prebuild": "npm run clean"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

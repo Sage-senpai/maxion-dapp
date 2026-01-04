@@ -1,5 +1,5 @@
-// src/lib/index.ts - FIXED IMPORTS
-// Location: src/lib/index.ts
+// src/lib/index.ts - CLEANED UP VERSION
+// Remove circular imports and organize better
 
 // ============================================================================
 // CONSTANTS
@@ -19,7 +19,7 @@ export {
 export type { RWAAsset } from './constants';
 
 // ============================================================================
-// UTILITIES
+// UTILITIES - Import directly, don't re-export from validators
 // ============================================================================
 export {
   formatCurrency,
@@ -115,76 +115,10 @@ export {
 } from './web3/hooks';
 
 // ============================================================================
-// DATABASE
+// HELPER FUNCTIONS - NO CIRCULAR IMPORTS
 // ============================================================================
-
-
-// ============================================================================
-// TYPE RE-EXPORTS
-// ============================================================================
-export type {
-  User as UserType,
-  RiskProfile,
-  AssetType,
-  RiskLevel,
-  Allocation as AllocationType,
-  AllocationStatus,
-  AIAnalysis as AIAnalysisType,
-  AIAnalysisContext,
-  Transaction,
-  TransactionReceipt,
-  Log,
-  VaultPosition,
-  Strategy,
-  ApiResponse,
-  PaginatedResponse,
-  ChartDataPoint,
-  PerformanceData,
-  Notification,
-  NotificationType,
-  AllocationFormData,
-  ValidationError,
-  AssetFilters,
-  AssetSortOptions,
-  SortOrder,
-} from '@/types';
-
-export type {
-  CreateUserRequest,
-  CreateUserResponse,
-  GetUserResponse,
-  CreateAllocationRequest,
-  CreateAllocationResponse,
-  GetAllocationsResponse,
-  CreateAIAnalysisRequest,
-  CreateAIAnalysisResponse,
-  GetAIAnalysisHistoryResponse,
-  ErrorResponse,
-} from '@/types/api';
-
-export type {
-  VaultContractMethods,
-  ERC20Methods,
-  StrategyMethods,
-  DepositEvent,
-  WithdrawEvent,
-  YieldHarvestedEvent,
-  TransferEvent,
-  ApprovalEvent,
-  ContractAddresses,
-  NetworkConfig,
-} from '@/types/contracts';
-
-// ============================================================================
-// HELPER FUNCTIONS - FIXED IMPORTS
-// ============================================================================
-
 import { RISK_COLOR_MAP, COLORS } from './constants';
-import { isValidAddress as validateAddress } from './utils/validators';
 
-/**
- * Get risk score for sorting
- */
 export function getRiskScore(risk: string): number {
   const scores: Record<string, number> = {
     Low: 1,
@@ -196,45 +130,27 @@ export function getRiskScore(risk: string): number {
   return scores[risk] || 3;
 }
 
-/**
- * Get risk color
- */
 export function getRiskColor(risk: string): string {
   return RISK_COLOR_MAP[risk as keyof typeof RISK_COLOR_MAP] || COLORS.warningAmber;
 }
 
-/**
- * Format risk profile display name
- */
 export function formatRiskProfileName(profile: string): string {
   return profile.charAt(0).toUpperCase() + profile.slice(1);
 }
 
-/**
- * Check if wallet is connected
- */
 export function isWalletConnected(address: string | undefined): boolean {
-  return !!address && validateAddress(address);
+  return !!address && /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 
-/**
- * Truncate text with ellipsis
- */
 export function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength - 3) + '...';
 }
 
-/**
- * Sleep utility for delays
- */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Debounce function
- */
 export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -246,9 +162,6 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
-/**
- * Throttle function
- */
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
   limit: number
