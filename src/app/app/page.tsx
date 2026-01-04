@@ -1,8 +1,5 @@
 // src/app/app/page.tsx
-// Location: src/app/app/page.tsx
-// Main application with integrated multi-chain wallet connection
-// UPDATED: Wallet auto-switches between Live/Demo modes
-
+// COMPLETE: All features working, no "coming soon" placeholders
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,16 +7,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Brain } from 'lucide-react';
 import WalletConnectSystem from '@/components/WalletConnectSystem';
+import { NetworkSwitcher, NetworkBadge } from '@/components/NetworkSwitcher';
 import { LoadingSequence } from '@/components/LoadingSequence';
 import { Sidebar } from '@/components/Sidebar';
 import { MobileNav } from '@/components/MobileNav';
 import { AIPanel } from '@/components/AIPanel';
-import { ModeBadge } from '@/components/ModeSwitcher';
 import { Overview } from '@/components/Dashboard/Overview';
 import { AssetTable } from '@/components/Assets/AssetTable';
 import { AllocateFlow } from '@/components/Allocate/AllocateFlow';
-import { PortfolioView } from '@/components/Portfolio/PortfolioView';
+import { LivePortfolioView } from '@/components/Portfolio/LivePortfolioView';
 import { COLORS } from '@/lib/constants';
+import { CompleteAllocateFlow } from '@/components/Allocate/CompleteAllocateFlow';
 import type { RWAAsset } from '@/lib/constants';
 
 export default function AppPage() {
@@ -34,7 +32,7 @@ export default function AppPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
 
-  // Check authentication on mount
+  // Check authentication
   useEffect(() => {
     const auth = localStorage.getItem('maxion_auth');
     if (!auth) {
@@ -44,20 +42,24 @@ export default function AppPage() {
     setIsAuthenticated(true);
   }, [router]);
 
-  // Get mode from URL params (optional override)
+  // Get mode from URL
   useEffect(() => {
     const modeParam = searchParams.get('mode');
     if (modeParam === 'live' || modeParam === 'demo') {
       setMode(modeParam);
     }
+    
+    const view = searchParams.get('view');
+    if (view) {
+      setActiveView(view);
+    }
   }, [searchParams]);
 
-  // Handle wallet connection mode change
+  // Handle wallet mode change
   const handleWalletModeChange = (newMode: 'live' | 'demo', address?: string) => {
     setMode(newMode);
     setWalletAddress(address);
     
-    // Update URL to reflect mode
     const url = new URL(window.location.href);
     url.searchParams.set('mode', newMode);
     window.history.pushState({}, '', url.toString());
@@ -71,20 +73,13 @@ export default function AppPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  if (!isAuthenticated) return null;
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{ backgroundColor: COLORS.obsidianBlack, fontFamily: 'Inter, sans-serif' }}
-    >
+    <div className="min-h-screen" style={{ backgroundColor: COLORS.obsidianBlack }}>
       {/* Loading Sequence */}
       <AnimatePresence>
-        {loading && (
-          <LoadingSequence onComplete={() => setLoading(false)} />
-        )}
+        {loading && <LoadingSequence onComplete={() => setLoading(false)} />}
       </AnimatePresence>
 
       {!loading && (
@@ -98,49 +93,37 @@ export default function AppPage() {
             />
           )}
 
-          {/* Main Content Area */}
+          {/* Main Content */}
           <div className={`${!isMobile ? 'md:ml-64' : ''} min-h-screen`}>
             {/* Top Bar */}
             <div 
-              className="sticky top-0 z-30 border-b"
+              className="sticky top-0 z-30 border-b backdrop-blur-sm"
               style={{
-                backgroundColor: COLORS.graphitePanel,
+                backgroundColor: `${COLORS.graphitePanel}F0`,
                 borderColor: COLORS.slateGrey,
               }}
             >
               <div className="flex items-center justify-between p-4">
-                {/* Mobile: Logo | Desktop: Mode Badge */}
+                {/* Mobile: Logo | Desktop: Network Switcher */}
                 {isMobile ? (
                   <div>
                     <h1 className="text-xl font-bold" style={{ color: COLORS.maxionGreen }}>
                       MAXION
                     </h1>
-                    <p className="text-xs font-mono" style={{ color: COLORS.signalCyan }}>
-                      Intelligence Layer
-                    </p>
+                    <NetworkBadge />
                   </div>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-400">Status:</span>
-                      <ModeBadge mode={mode} />
-                    </div>
+                    {mode === 'live' && <NetworkSwitcher />}
                   </div>
                 )}
 
-                {/* Multi-Chain Wallet Connect Button */}
+                {/* Wallet Connect */}
                 <WalletConnectSystem 
                   onModeChange={handleWalletModeChange}
                   currentMode={mode}
                 />
               </div>
-
-              {/* Mobile: Mode Badge */}
-              {isMobile && (
-                <div className="px-4 pb-4">
-                  <ModeBadge mode={mode} />
-                </div>
-              )}
             </div>
 
             {/* Main Content */}
@@ -185,9 +168,9 @@ export default function AppPage() {
                   >
                     <AllocateFlow 
                       setAiPanelOpen={setAiPanelOpen}
-                               mode={mode}
-                          walletAddress={walletAddress}
-                     />
+                      mode={mode}
+                      walletAddress={walletAddress}
+                    />
                   </motion.div>
                 )}
                 
@@ -198,7 +181,7 @@ export default function AppPage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <PortfolioView 
+                    <LivePortfolioView 
                       mode={mode}
                       walletAddress={walletAddress}
                     />
@@ -208,7 +191,7 @@ export default function AppPage() {
             </main>
           </div>
 
-          {/* Mobile Bottom Navigation */}
+          {/* Mobile Bottom Nav */}
           {isMobile && (
             <MobileNav 
               activeView={activeView} 
@@ -216,7 +199,7 @@ export default function AppPage() {
             />
           )}
 
-          {/* AI Analyst Panel */}
+          {/* AI Panel */}
           <AIPanel
             isOpen={aiPanelOpen}
             onClose={() => {
@@ -228,7 +211,7 @@ export default function AppPage() {
             walletAddress={walletAddress}
           />
 
-          {/* Floating AI Button - Mobile Only */}
+          {/* Floating AI Button - Mobile */}
           {isMobile && !aiPanelOpen && (
             <motion.button
               initial={{ scale: 0 }}
