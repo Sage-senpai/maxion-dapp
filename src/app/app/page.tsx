@@ -3,6 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Brain } from 'lucide-react';
@@ -20,7 +21,11 @@ import { COLORS } from '@/lib/constants';
 import { CompleteAllocateFlow } from '@/components/Allocate/CompleteAllocateFlow';
 import type { RWAAsset } from '@/lib/constants';
 
-export default function AppPage() {
+// Force dynamic rendering to avoid prerendering issues with useSearchParams
+export const dynamic = 'force-dynamic';
+
+// Inner component that uses useSearchParams
+function AppContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -76,6 +81,7 @@ export default function AppPage() {
   if (!isAuthenticated) return null;
 
   return (
+    
     <div className="min-h-screen" style={{ backgroundColor: COLORS.obsidianBlack }}>
       {/* Loading Sequence */}
       <AnimatePresence>
@@ -229,7 +235,23 @@ export default function AppPage() {
             </motion.button>
           )}
         </>
-      )}
+      )} 
+      
     </div>
+   
+      
+  );
+}
+
+// Main export with Suspense wrapper
+export default function AppPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-white text-xl">Loading MAXION...</div>
+      </div>
+    }>
+      <AppContent />
+    </Suspense>
   );
 }

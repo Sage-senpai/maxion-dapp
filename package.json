@@ -4,12 +4,12 @@
   "description": "MAXION - Intelligence Layer for Real-World Yield on Mantle",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "NODE_OPTIONS='--max-old-space-size=4096' next build",
+    "dev": "next dev --webpack",
+    "build": "cross-env NODE_OPTIONS='--max-old-space-size=4096' NEXT_USE_WEBPACK=true next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed-supabase.ts",
-    "clean": "rm -rf .next node_modules/.cache",
+    "clean": "rimraf .next node_modules/.cache",
     "prebuild": "npm run clean"
   },
   "dependencies": {
@@ -19,16 +19,25 @@
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@supabase/supabase-js": "^2.89.0",
     "@tanstack/react-query": "^5.90.12",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "crypto-browserify": "^3.12.1",
     "dotenv": "^16.4.1",
     "ethers": "^6.16.0",
     "framer-motion": "^11.0.0",
+    "https-browserify": "^1.0.0",
     "lucide-react": "^0.561.0",
     "next": "16.0.10",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "recharts": "^2.10.0",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.42.1",
@@ -43,14 +52,29 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.23",
     "babel-plugin-react-compiler": "1.0.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
+    "ignore-loader": "^0.1.2",
     "postcss": "^8.5.6",
+    "rimraf": "^5.0.10",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "overrides": {
+    "pino": "^8.19.0",
+    "thread-stream": "^2.4.1",
+    "valtio": {
+      "use-sync-external-store": "^1.2.2"
+    }
+  },
+  "resolutions": {
+    "pino": "^8.19.0",
+    "thread-stream": "^2.4.1",
+    "use-sync-external-store": "^1.2.2"
   }
 }

@@ -1,5 +1,5 @@
 // src/components/Portfolio/LivePortfolioView.tsx
-// COMPLETE: Real wallet integration with contract reads
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -27,7 +27,7 @@ export function LivePortfolioView({ mode, walletAddress }: LivePortfolioViewProp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Contract reads
+  // Contract reads - with proper type handling
   const { data: vaultBalance, refetch: refetchBalance } = useVaultBalance();
   const { data: userPosition, refetch: refetchPosition } = useUserPosition();
   const { data: sharePrice } = useSharePrice();
@@ -65,10 +65,18 @@ export function LivePortfolioView({ mode, walletAddress }: LivePortfolioViewProp
     ]);
   };
 
-  // Calculate portfolio stats
-  const totalShares = vaultBalance ? Number(formatTokenAmount(vaultBalance, 18)) : 0;
-  const totalValue = userPosition ? Number(formatTokenAmount(userPosition.totalDeposited, 6)) : 0;
-  const currentValue = sharePrice && vaultBalance 
+  // FIXED: Calculate portfolio stats with proper type checking
+  const totalShares = vaultBalance && typeof vaultBalance === 'bigint' 
+    ? Number(formatTokenAmount(vaultBalance, 18)) 
+    : 0;
+  
+  const totalValue = userPosition && typeof userPosition === 'object' && 'totalDeposited' in userPosition
+    ? Number(formatTokenAmount(userPosition.totalDeposited as bigint, 6))
+    : 0;
+  
+  const currentValue = sharePrice && vaultBalance && 
+                       typeof sharePrice === 'bigint' && 
+                       typeof vaultBalance === 'bigint'
     ? (Number(formatTokenAmount(vaultBalance, 18)) * Number(formatTokenAmount(sharePrice, 18)))
     : totalValue;
   

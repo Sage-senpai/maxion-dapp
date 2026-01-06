@@ -1,5 +1,5 @@
 // src/components/Allocate/CompleteAllocateFlow.tsx
-// COMPLETE: Full contract integration with approve + deposit
+// FIXED: Type errors with bigint values from wagmi hooks
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -36,15 +36,20 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
   const [error, setError] = useState('');
   const [txHash, setTxHash] = useState('');
 
-  // Contract hooks
+  // Contract hooks - FIXED: Type assertions
   const { data: usdcBalance } = useUSDCBalance();
   const { data: allowance } = useUSDCAllowance();
   const { approve, isPending: isApproving, isSuccess: isApproved, hash: approveHash } = useApproveUSDC();
   const { deposit, isPending: isDepositing, isSuccess: isDeposited, hash: depositHash } = useDeposit();
 
-  const balanceFormatted = usdcBalance ? Number(formatTokenAmount(usdcBalance, 6)) : 0;
+  // FIXED: Safe type conversion with proper checks
+  const balanceFormatted = usdcBalance ? Number(formatTokenAmount(usdcBalance as bigint, 6)) : 0;
   const amountNum = parseFloat(amount) || 0;
-  const needsApproval = allowance ? parseUnits(amount || '0', 6) > allowance : true;
+  
+  // FIXED: Safe comparison with type checking
+  const needsApproval = allowance !== undefined && amount 
+    ? parseUnits(amount || '0', 6) > (allowance as bigint)
+    : true;
 
   // Handle approve success
   useEffect(() => {
