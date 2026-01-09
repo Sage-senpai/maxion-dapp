@@ -1,0 +1,30 @@
+{
+  "mockUSDC": "0x9d8B656598274BDa44c355bF355F47CE7eaDa3c5",
+  "yieldVault": "0x65FEdd3e4d93885D7Fc5A65D8E149740Fc131C6b",
+  "strategies": [
+    {
+      "name": "US Treasury Bond Pool",
+      "address": "0xe0D71A007b2fbfCD220E68E1c5810A6D62132a86",
+      "apy": 4.2,
+      "riskLevel": "Low"
+    },
+    {
+      "name": "Real Estate Income Fund",
+      "address": "0x2CebfE6BFD7E23266CeB49e1d25b00631d6Ad51F",
+      "apy": 7.8,
+      "riskLevel": "Medium"
+    },
+    {
+      "name": "Corporate Credit Facility",
+      "address": "0xde14DEEBFB7Ff90A7152C9a9b8209138FA81904F",
+      "apy": 11.5,
+      "riskLevel": "Medium-High"
+    },
+    {
+      "name": "Infrastructure Debt",
+      "address": "0x151f65D080660738Fc6322E294f533b7ef5D612F",
+      "apy": 6.4,
+      "riskLevel": "Low-Medium"
+    }
+  ]
+}

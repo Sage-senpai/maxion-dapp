@@ -1,22 +1,30 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "CommonJS",
-    "lib": ["ES2020"],
-    "strict": true,
+    "target": "ES2022",
+    "module": "commonjs",
     "esModuleInterop": true,
-    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["node", "mocha", "chai"]
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "./",
+    "types": ["node", "mocha"],
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": [
-    "hardhat.config.cjs",
     "./scripts/**/*",
     "./test/**/*",
-    "./ignition/**/*"
-  ],
+    "./hardhat.config.ts"
+, "test-rpc.ts", "contracts/scripts/generate-fresh-wallet.js", "contracts/scripts/deploy-remaining-strategies.ts"  ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist",
+    "cache",
+    "artifacts"
+  ],
+  "files": [
+    "./hardhat.config.cjs"
   ]
 }
