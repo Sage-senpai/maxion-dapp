@@ -15,10 +15,10 @@ import { MobileNav } from '@/components/MobileNav';
 import { AIPanel } from '@/components/AIPanel';
 import { Overview } from '@/components/Dashboard/Overview';
 import { AssetTable } from '@/components/Assets/AssetTable';
-import { AllocateFlow } from '@/components/Allocate/AllocateFlow';
+import { CompleteAllocateFlow } from '@/components/Allocate/AllocateFlow';
 import { LivePortfolioView } from '@/components/Portfolio/LivePortfolioView';
 import { COLORS } from '@/lib/constants';
-import { CompleteAllocateFlow } from '@/components/Allocate/CompleteAllocateFlow';
+//import { CompleteAllocateFlow } from '@/components/Allocate/CompleteAllocateFlow';
 import type { RWAAsset } from '@/lib/constants';
 
 // Force dynamic rendering to avoid prerendering issues with useSearchParams
@@ -172,7 +172,7 @@ function AppContent() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <AllocateFlow 
+                    <CompleteAllocateFlow 
                       setAiPanelOpen={setAiPanelOpen}
                       mode={mode}
                       walletAddress={walletAddress}
