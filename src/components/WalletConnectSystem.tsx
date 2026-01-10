@@ -1,10 +1,10 @@
 // src/components/WalletConnectSystem.tsx
-// FIXED: Proper modal centering, wallet reading, network detection
+// FIXED: Multi-wallet support - one account can have multiple wallets
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, ChevronDown, Check, X, LogOut, Loader2, AlertCircle, ExternalLink, Zap, Eye } from 'lucide-react';
+import { Wallet, ChevronDown, Check, X, LogOut, Loader2, AlertCircle, ExternalLink, Zap, Eye, Plus } from 'lucide-react';
 import { useAccount, useDisconnect, useBalance, useChainId } from 'wagmi';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 
@@ -31,11 +31,36 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
   const { openConnectModal } = useConnectModal();
   
   const [showDisconnect, setShowDisconnect] = useState(false);
+  const [connectedWallets, setConnectedWallets] = useState<string[]>([]);
 
-  // Update mode when connection changes
+  // Load connected wallets from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedWallets = localStorage.getItem('maxion_connected_wallets');
+      if (savedWallets) {
+        try {
+          setConnectedWallets(JSON.parse(savedWallets));
+        } catch (e) {
+          console.error('Failed to load wallets:', e);
+        }
+      }
+    }
+  }, []);
+
+  // Update mode and save wallet when connection changes
   useEffect(() => {
     if (onModeChange) {
       if (isConnected && address) {
+        // Add wallet to connected wallets list
+        const walletAddress = address.toLowerCase();
+        setConnectedWallets(prev => {
+          const updated = prev.includes(walletAddress) ? prev : [...prev, walletAddress];
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('maxion_connected_wallets', JSON.stringify(updated));
+          }
+          return updated;
+        });
+        
         onModeChange('live', address);
       } else {
         onModeChange('demo');
@@ -46,6 +71,16 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
   const handleDisconnect = () => {
     disconnect();
     setShowDisconnect(false);
+  };
+
+  const handleRemoveWallet = (walletToRemove: string) => {
+    setConnectedWallets(prev => {
+      const updated = prev.filter(w => w !== walletToRemove.toLowerCase());
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('maxion_connected_wallets', JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   const formatAddress = (addr: string) => {
@@ -113,7 +148,7 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
         </motion.button>
       )}
 
-      {/* Disconnect Dropdown */}
+      {/* Dropdown */}
       <AnimatePresence>
         {showDisconnect && isConnected && (
           <>
@@ -128,13 +163,14 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="absolute top-full right-0 mt-2 w-72 rounded-xl shadow-2xl border z-50"
+              className="absolute top-full right-0 mt-2 w-80 rounded-xl shadow-2xl border z-50"
               style={{
                 backgroundColor: COLORS.graphitePanel,
                 borderColor: COLORS.slateGrey,
               }}
             >
               <div className="p-4 space-y-4">
+                {/* Current Wallet */}
                 <div className="flex items-center gap-3 pb-4 border-b" style={{ borderColor: COLORS.slateGrey }}>
                   <span className="text-3xl">{getWalletIcon()}</span>
                   <div className="flex-1">
@@ -143,8 +179,9 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
                   </div>
                 </div>
 
+                {/* Address */}
                 <div>
-                  <div className="text-xs text-gray-400 mb-1">Address</div>
+                  <div className="text-xs text-gray-400 mb-1">Current Address</div>
                   <div className="flex items-center justify-between p-2 rounded-lg" style={{ backgroundColor: COLORS.slateGrey }}>
                     <span className="font-mono text-sm" style={{ color: COLORS.maxionGreen }}>
                       {formatAddress(address!)}
@@ -158,6 +195,7 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
                   </div>
                 </div>
 
+                {/* Balance */}
                 <div>
                   <div className="text-xs text-gray-400 mb-1">Balance</div>
                   <div className="font-mono text-lg font-bold" style={{ color: COLORS.maxionGreen }}>
@@ -165,7 +203,55 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
                   </div>
                 </div>
 
+                {/* Connected Wallets List */}
+                {connectedWallets.length > 1 && (
+                  <div>
+                    <div className="text-xs text-gray-400 mb-2">Connected Wallets ({connectedWallets.length})</div>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {connectedWallets.map((wallet) => (
+                        <div
+                          key={wallet}
+                          className="flex items-center justify-between p-2 rounded text-xs"
+                          style={{
+                            backgroundColor: wallet === address?.toLowerCase() ? `${COLORS.maxionGreen}20` : COLORS.slateGrey,
+                          }}
+                        >
+                          <span className="font-mono" style={{ color: wallet === address?.toLowerCase() ? COLORS.maxionGreen : '#9CA3AF' }}>
+                            {formatAddress(wallet)}
+                          </span>
+                          {wallet === address?.toLowerCase() ? (
+                            <Check size={14} style={{ color: COLORS.maxionGreen }} />
+                          ) : (
+                            <button
+                              onClick={() => handleRemoveWallet(wallet)}
+                              className="text-gray-500 hover:text-red-400"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
                 <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      setShowDisconnect(false);
+                      openConnectModal?.();
+                    }}
+                    className="w-full py-2 px-4 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                    style={{
+                      backgroundColor: `${COLORS.signalCyan}20`,
+                      color: COLORS.signalCyan,
+                    }}
+                  >
+                    <Plus size={16} />
+                    Add Another Wallet
+                  </button>
+
                   <button
                     onClick={handleDisconnect}
                     className="w-full py-2 px-4 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
@@ -175,7 +261,7 @@ export default function WalletConnectSystem({ onModeChange, currentMode = 'demo'
                     }}
                   >
                     <LogOut size={16} />
-                    Disconnect
+                    Disconnect Current
                   </button>
                 </div>
               </div>
