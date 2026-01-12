@@ -1,12 +1,12 @@
 // src/components/Allocate/CompleteAllocateFlow.tsx
-// FIXED: Full allocation flow with wallet reading and portfolio updates
+// FIXED: Proper wallet balance reading, multi-wallet support, complete flow
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Info, Loader2, CheckCircle2, AlertCircle, ExternalLink, TrendingUp, DollarSign, Calendar } from 'lucide-react';
-import { useAccount, useChainId, useBalance } from 'wagmi';
-import { parseUnits, formatUnits } from 'viem';
+import { CheckCircle2, AlertCircle, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
+import { useAccount, useChainId } from 'wagmi';
+import { parseUnits } from 'viem';
 import { COLORS, MOCK_RWA_ASSETS, RISK_COLOR_MAP } from '@/lib/constants';
 import { 
   useUSDCBalance, 
@@ -15,7 +15,6 @@ import {
   useDeposit,
   formatTokenAmount 
 } from '@/lib/web3/hooks';
-import { getVaultAddress, getUSDCAddress } from '@/lib/contracts';
 import { allocationAPI } from '@/lib/api';
 import type { RWAAsset } from '@/lib/constants';
 
@@ -35,36 +34,26 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
   const [txHash, setTxHash] = useState('');
-  const [estimatedYield, setEstimatedYield] = useState(0);
 
-  // Contract hooks
-  const { data: usdcBalance } = useUSDCBalance();
+  // FIXED: Properly read contract data
+  const { data: usdcBalance, refetch: refetchBalance } = useUSDCBalance();
   const { data: allowance, refetch: refetchAllowance } = useUSDCAllowance();
   const { approve, isPending: isApproving, isSuccess: isApproved, hash: approveHash } = useApproveUSDC();
   const { deposit, isPending: isDepositing, isSuccess: isDeposited, hash: depositHash } = useDeposit();
 
-  // ETH balance for gas
-  const { data: ethBalance } = useBalance({ address });
-
-  // Safe type conversion
-  const balanceFormatted = usdcBalance ? Number(formatTokenAmount(usdcBalance as bigint, 6)) : 0;
+  // FIXED: Safe type conversion with proper null checks
+  const balanceFormatted = usdcBalance && typeof usdcBalance === 'bigint'
+    ? Number(formatTokenAmount(usdcBalance, 6))
+    : 0;
+  
   const amountNum = parseFloat(amount) || 0;
   
-  // Check if approval needed
-  const needsApproval = allowance !== undefined && amount 
-    ? parseUnits(amount || '0', 6) > (allowance as bigint)
+  // FIXED: Proper approval check
+  const needsApproval = allowance !== undefined && amount && amountNum > 0
+    ? parseUnits(amount, 6) > (allowance as bigint)
     : true;
 
-  // Calculate estimated yield
-  useEffect(() => {
-    if (selectedAsset && amountNum > 0) {
-      setEstimatedYield((amountNum * selectedAsset.apy) / 100);
-    } else {
-      setEstimatedYield(0);
-    }
-  }, [selectedAsset, amountNum]);
-
-  // Handle approve success
+  // Auto-progress after approval
   useEffect(() => {
     if (isApproved && step === 'approve') {
       refetchAllowance();
@@ -72,7 +61,7 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
     }
   }, [isApproved, step, refetchAllowance]);
 
-  // Handle deposit success
+  // Auto-progress after deposit
   useEffect(() => {
     if (isDeposited && step === 'processing') {
       handleDepositSuccess();
@@ -94,6 +83,7 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
       setError('Please enter a valid amount');
       return;
     }
+    
     if (amountNum < (selectedAsset?.minInvestment || 100)) {
       setError(`Minimum investment is $${selectedAsset?.minInvestment.toLocaleString()}`);
       return;
@@ -106,10 +96,6 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
       }
       if (amountNum > balanceFormatted) {
         setError(`Insufficient balance. Available: $${balanceFormatted.toLocaleString()}`);
-        return;
-      }
-      if (ethBalance && parseFloat(ethBalance.formatted) < 0.001) {
-        setError('Insufficient MNT for gas fees');
         return;
       }
     }
@@ -143,7 +129,7 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
     setError('');
 
     try {
-      if (mode === 'live' && walletAddress) {
+      if (mode === 'live' && (walletAddress || address)) {
         // Real transaction
         await deposit(amount);
       } else {
@@ -161,14 +147,15 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
   };
 
   const handleDepositSuccess = async (mockHash?: string) => {
-    if (!selectedAsset || !walletAddress) return;
+    const finalWalletAddress = walletAddress || address;
+    if (!selectedAsset || !finalWalletAddress) return;
 
     const finalTxHash = depositHash || mockHash || txHash;
 
     // Save to database
     try {
       await allocationAPI.createAllocation({
-        walletAddress,
+        walletAddress: finalWalletAddress,
         assetId: selectedAsset.id,
         assetName: selectedAsset.name,
         amount: amountNum,
@@ -192,7 +179,6 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
     setAmount('');
     setError('');
     setTxHash('');
-    setEstimatedYield(0);
   };
 
   return (
@@ -201,11 +187,15 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
       animate={{ opacity: 1, y: 0 }}
       className="max-w-3xl mx-auto space-y-6"
     >
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-200">Allocate Capital</h2>
         {mode === 'live' && isConnected && (
-          <div className="text-sm text-gray-400">
-            Balance: <span className="font-mono text-green-400">${balanceFormatted.toFixed(2)}</span>
+          <div className="text-sm">
+            <span className="text-gray-400">Balance: </span>
+            <span className="font-mono font-bold" style={{ color: COLORS.maxionGreen }}>
+              ${balanceFormatted.toFixed(2)}
+            </span>
           </div>
         )}
       </div>
@@ -243,16 +233,16 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
               whileHover={{ scale: 1.01 }}
               onClick={() => handleAssetSelect(asset)}
               className="p-4 rounded-lg border cursor-pointer"
-              style={{
-                backgroundColor: COLORS.graphitePanel,
-                borderColor: COLORS.slateGrey,
-              }}
+              style={{ backgroundColor: COLORS.graphitePanel, borderColor: COLORS.slateGrey }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="font-semibold text-gray-200">{asset.name}</h4>
-                    <RiskBadge risk={asset.risk} />
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold" 
+                      style={{ backgroundColor: `${RISK_COLOR_MAP[asset.risk]}20`, color: RISK_COLOR_MAP[asset.risk] }}>
+                      {asset.risk}
+                    </span>
                   </div>
                   <p className="text-sm text-gray-400">{asset.type}</p>
                 </div>
@@ -291,10 +281,7 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="1000"
                 className="w-full pl-8 pr-4 py-3 rounded-lg text-lg font-mono outline-none"
-                style={{
-                  backgroundColor: COLORS.slateGrey,
-                  color: COLORS.maxionGreen,
-                }}
+                style={{ backgroundColor: COLORS.slateGrey, color: COLORS.maxionGreen }}
               />
             </div>
             <div className="flex justify-between mt-2 text-xs text-gray-500">
@@ -303,11 +290,11 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
             </div>
           </div>
 
-          {estimatedYield > 0 && (
+          {amountNum > 0 && (
             <div className="p-4 rounded-lg" style={{ backgroundColor: COLORS.graphitePanel }}>
               <div className="text-sm text-gray-400 mb-2">Estimated Annual Yield</div>
               <div className="font-mono text-2xl font-bold" style={{ color: COLORS.maxionGreen }}>
-                ${estimatedYield.toFixed(2)}
+                ${((amountNum * selectedAsset.apy) / 100).toFixed(2)}
               </div>
             </div>
           )}
@@ -315,9 +302,10 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
           <div className="flex gap-3">
             <button
               onClick={() => setStep('select')}
-              className="flex-1 py-3 rounded-lg font-medium"
+              className="flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
               style={{ backgroundColor: COLORS.slateGrey, color: '#9CA3AF' }}
             >
+              <ArrowLeft size={18} />
               Back
             </button>
             <button
@@ -337,37 +325,130 @@ export function CompleteAllocateFlow({ setAiPanelOpen, mode, walletAddress }: Co
 
       {/* Step 3: Approve */}
       {step === 'approve' && (
-        <ApprovalStep
-          onApprove={handleApprove}
-          isApproving={isApproving}
-          approveHash={approveHash}
-          chainId={chainId}
-        />
+        <div className="space-y-6 text-center">
+          <div className="p-6 rounded-xl" style={{ backgroundColor: COLORS.graphitePanel }}>
+            <h3 className="text-xl font-semibold text-gray-200 mb-4">Approve USDC</h3>
+            <p className="text-sm text-gray-400 mb-6">
+              You need to approve the vault contract to spend your USDC. This is a one-time approval.
+            </p>
+            
+            <button
+              onClick={handleApprove}
+              disabled={isApproving}
+              className="px-8 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto"
+              style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+            >
+              {isApproving ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  Approving...
+                </>
+              ) : (
+                'Approve USDC'
+              )}
+            </button>
+
+            {approveHash && (
+              <a
+                href={`https://explorer.${chainId === 5003 ? 'testnet.' : ''}mantle.xyz/tx/${approveHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs mt-4 inline-flex items-center gap-1"
+                style={{ color: COLORS.signalCyan }}
+              >
+                View Transaction <ExternalLink size={12} />
+              </a>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Step 4: Confirm */}
       {(step === 'confirm' || step === 'processing') && selectedAsset && (
-        <ConfirmStep
-          asset={selectedAsset}
-          amount={amount}
-          estimatedYield={estimatedYield}
-          onConfirm={handleConfirm}
-          onBack={() => setStep('amount')}
-          isProcessing={step === 'processing' || isDepositing}
-          mode={mode}
-        />
+        <div className="space-y-6">
+          <div className="p-6 rounded-xl" style={{ backgroundColor: COLORS.graphitePanel }}>
+            <h3 className="text-lg font-semibold text-gray-200 mb-4">Confirm Allocation</h3>
+            
+            <div className="space-y-3">
+              <DetailRow label="Asset" value={selectedAsset.name} />
+              <DetailRow label="Amount" value={`$${parseFloat(amount).toLocaleString()}`} mono />
+              <DetailRow label="APY" value={`${selectedAsset.apy}%`} mono />
+              <DetailRow label="Est. Annual Yield" value={`$${((amountNum * selectedAsset.apy) / 100).toFixed(2)}`} mono />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep('amount')}
+              disabled={step === 'processing'}
+              className="flex-1 py-3 rounded-lg font-medium"
+              style={{ backgroundColor: COLORS.slateGrey, color: '#9CA3AF' }}
+            >
+              Back
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={step === 'processing'}
+              className="flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
+              style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+            >
+              {step === 'processing' ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Confirm'
+              )}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Step 5: Success */}
       {step === 'success' && selectedAsset && (
-        <SuccessStep
-          asset={selectedAsset}
-          amount={amount}
-          estimatedYield={estimatedYield}
-          txHash={depositHash || txHash}
-          chainId={chainId}
-          onDone={reset}
-        />
+        <div className="text-center py-8 space-y-6">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: 'spring' }}
+          >
+            <CheckCircle2 size={64} style={{ color: COLORS.maxionGreen }} className="mx-auto" />
+          </motion.div>
+
+          <div>
+            <h3 className="text-2xl font-bold text-white mb-2">Allocation Successful!</h3>
+            <p className="text-gray-400">Your capital has been allocated</p>
+          </div>
+
+          <div className="p-4 rounded-lg max-w-md mx-auto" style={{ backgroundColor: COLORS.graphitePanel }}>
+            <div className="space-y-2">
+              <DetailRow label="Asset" value={selectedAsset.name} />
+              <DetailRow label="Amount" value={`$${parseFloat(amount).toLocaleString()}`} />
+              <DetailRow label="Est. Yield" value={`$${((amountNum * selectedAsset.apy) / 100).toFixed(2)}/year`} />
+            </div>
+          </div>
+
+          {(depositHash || txHash) && (
+            <a
+              href={`https://explorer.${chainId === 5003 ? 'testnet.' : ''}mantle.xyz/tx/${depositHash || txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm inline-flex items-center gap-1"
+              style={{ color: COLORS.maxionGreen }}
+            >
+              View Transaction <ExternalLink size={16} />
+            </a>
+          )}
+
+          <button
+            onClick={reset}
+            className="px-8 py-3 rounded-lg font-semibold"
+            style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
+          >
+            View Portfolio
+          </button>
+        </div>
       )}
     </motion.div>
   );
@@ -396,149 +477,6 @@ function ProgressBar({ currentStep }: { currentStep: Step }) {
           )}
         </React.Fragment>
       ))}
-    </div>
-  );
-}
-
-// Other components (ApprovalStep, ConfirmStep, SuccessStep, RiskBadge) remain the same...
-// [Previous implementations work fine]
-
-function RiskBadge({ risk }: { risk: string }) {
-  const color = RISK_COLOR_MAP[risk as keyof typeof RISK_COLOR_MAP] || COLORS.warningAmber;
-  return (
-    <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ backgroundColor: `${color}20`, color }}>
-      {risk}
-    </span>
-  );
-}
-
-function ApprovalStep({ onApprove, isApproving, approveHash, chainId }: any) {
-  return (
-    <div className="space-y-6 text-center">
-      <div className="p-6 rounded-xl" style={{ backgroundColor: COLORS.graphitePanel }}>
-        <h3 className="text-xl font-semibold text-gray-200 mb-4">Approve USDC</h3>
-        <p className="text-sm text-gray-400 mb-6">
-          You need to approve the vault contract to spend your USDC. This is a one-time approval.
-        </p>
-        
-        <button
-          onClick={onApprove}
-          disabled={isApproving}
-          className="px-8 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 mx-auto"
-          style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
-        >
-          {isApproving ? (
-            <>
-              <Loader2 size={20} className="animate-spin" />
-              Approving...
-            </>
-          ) : (
-            'Approve USDC'
-          )}
-        </button>
-
-        {approveHash && (
-          <a
-            href={`https://explorer.${chainId === 5003 ? 'testnet.' : ''}mantle.xyz/tx/${approveHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs mt-4 inline-flex items-center gap-1"
-            style={{ color: COLORS.signalCyan }}
-          >
-            View Transaction <ExternalLink size={12} />
-          </a>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ConfirmStep({ asset, amount, estimatedYield, onConfirm, onBack, isProcessing, mode }: any) {
-  return (
-    <div className="space-y-6">
-      <div className="p-6 rounded-xl" style={{ backgroundColor: COLORS.graphitePanel }}>
-        <h3 className="text-lg font-semibold text-gray-200 mb-4">Confirm Allocation</h3>
-        
-        <div className="space-y-3">
-          <DetailRow label="Asset" value={asset.name} />
-          <DetailRow label="Amount" value={`$${parseFloat(amount).toLocaleString()}`} mono />
-          <DetailRow label="APY" value={`${asset.apy}%`} mono />
-          <DetailRow label="Est. Annual Yield" value={`$${estimatedYield.toFixed(2)}`} mono />
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          onClick={onBack}
-          disabled={isProcessing}
-          className="flex-1 py-3 rounded-lg font-medium"
-          style={{ backgroundColor: COLORS.slateGrey, color: '#9CA3AF' }}
-        >
-          Back
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={isProcessing}
-          className="flex-1 py-3 rounded-lg font-medium flex items-center justify-center gap-2"
-          style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
-        >
-          {isProcessing ? (
-            <>
-              <Loader2 size={20} className="animate-spin" />
-              Processing...
-            </>
-          ) : (
-            'Confirm'
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SuccessStep({ asset, amount, estimatedYield, txHash, chainId, onDone }: any) {
-  return (
-    <div className="text-center py-8 space-y-6">
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring' }}
-      >
-        <CheckCircle2 size={64} style={{ color: COLORS.maxionGreen }} className="mx-auto" />
-      </motion.div>
-
-      <div>
-        <h3 className="text-2xl font-bold text-white mb-2">Allocation Successful!</h3>
-        <p className="text-gray-400">Your capital has been allocated</p>
-      </div>
-
-      <div className="p-4 rounded-lg max-w-md mx-auto" style={{ backgroundColor: COLORS.graphitePanel }}>
-        <div className="space-y-2">
-          <DetailRow label="Asset" value={asset.name} />
-          <DetailRow label="Amount" value={`$${parseFloat(amount).toLocaleString()}`} />
-          <DetailRow label="Est. Yield" value={`$${estimatedYield.toFixed(2)}/year`} />
-        </div>
-      </div>
-
-      {txHash && (
-        <a
-          href={`https://explorer.${chainId === 5003 ? 'testnet.' : ''}mantle.xyz/tx/${txHash}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm inline-flex items-center gap-1"
-          style={{ color: COLORS.maxionGreen }}
-        >
-          View Transaction <ExternalLink size={16} />
-        </a>
-      )}
-
-      <button
-        onClick={onDone}
-        className="px-8 py-3 rounded-lg font-semibold"
-        style={{ backgroundColor: COLORS.maxionGreen, color: COLORS.obsidianBlack }}
-      >
-        View Portfolio
-      </button>
     </div>
   );
 }
