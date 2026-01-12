@@ -102,14 +102,13 @@ Users aggregate RWA-backed yields, allocate capital by risk appetite, and receiv
 
 ### Backend
 - **API:** Next.js API Routes
-- **Database:** MongoDB Atlas (free tier)
-- **ODM:** Mongoose
+- **Database:** Supabase (free tier)
 - **Validation:** Zod
 
 ### AI
 - **LLM Integration:** Structured prompt templates
 - **Context-Aware:** Asset + user profile analysis
-- **Logging:** Full conversation history in MongoDB
+- **Logging:** Full conversation history in Supabase
 
 ### DevOps
 - **Deployment:** Vercel
